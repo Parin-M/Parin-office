@@ -36,6 +36,15 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
 
     fun count(): Int = requireNotNull(renderer).pageCount
 
+    fun pageSize(index: Int): Pair<Int, Int> {
+        val page = requireNotNull(renderer).openPage(index)
+        return try {
+            page.width to page.height
+        } finally {
+            page.close()
+        }
+    }
+
     fun render(index: Int, scale: Float): Bitmap {
         val page = requireNotNull(renderer).openPage(index)
         val s = scale.coerceIn(.75f, 2.5f)

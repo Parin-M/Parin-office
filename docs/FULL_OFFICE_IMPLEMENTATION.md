@@ -46,3 +46,6 @@ Never silently flatten an editable document. Rasterization/flattening must be an
 
 ## Release safety
 Production updates must reuse the same signing identity. versionCode is monotonically increasing and semantic version tags drive releases.
+
+## Verification checkpoint
+Compiler-fix validation checkpoint.

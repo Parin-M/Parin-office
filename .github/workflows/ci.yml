@@ -18,7 +18,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
-      - run: gradle assembleDebug
+      - name: Verify AGP 9 built-in Kotlin migration
+        run: |
+          if grep -R 'org.jetbrains.kotlin.android' -n --include="*.gradle.kts" .; then
+            echo "org.jetbrains.kotlin.android must not be applied with AGP 9+."
+            exit 1
+          fi
+      - run: gradle --no-daemon assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: parin-office-debug

@@ -1,15 +1,204 @@
 package com.parin.office.data
+
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Rect
+import android.graphics.Point
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.Build
 import com.parin.office.model.Annotation
-class PdfFile(private val c:Context,private val u:Uri,private val n:String){
- private val file=Files.cache(c,u,n);private var renderer:PdfRenderer?=null
- fun open(){if(renderer==null)renderer=PdfRenderer(android.os.ParcelFileDescriptor.open(file,android.os.ParcelFileDescriptor.MODE_READ_ONLY))}
- fun count()=requireNotNull(renderer).pageCount
- fun render(index:Int,scale:Float):Bitmap{val p=requireNotNull(renderer).openPage(index);val s=scale.coerceIn(.75f,2.5f);val b=Bitmap.createBitmap((p.width*s).toInt(),(p.height*s).toInt(),Bitmap.Config.ARGB_8888);p.render(b,null,Matrix().apply{setScale(s,s)},PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);p.close();return b}
- fun export(target:Uri,a:List<Annotation>){val r=PdfRenderer(android.os.ParcelFileDescriptor.open(file,android.os.ParcelFileDescriptor.MODE_READ_ONLY));val out=android.graphics.pdf.PdfDocument();try{for(i in 0 until r.pageCount){val src=r.openPage(i);val s=2f;val b=Bitmap.createBitmap((src.width*s).toInt(),(src.height*s).toInt(),Bitmap.Config.ARGB_8888);src.render(b,null,Matrix().apply{setScale(s,s)},PdfRenderer.Page.RENDER_MODE_FOR_PRINT);src.close();val info=android.graphics.pdf.PdfDocument.PageInfo.Builder(b.width,b.height,i+1).create();val page=out.startPage(info);page.canvas.drawBitmap(b,0f,0f,null);draw(page.canvas,b.width.toFloat(),b.height.toFloat(),a.filter{it.page==i});out.finishPage(page);b.recycle()};c.contentResolver.openOutputStream(target).use{requireNotNull(it);out.writeTo(it!!)}}finally{out.close();r.close()}}
- private fun draw(c:Canvas,w:Float,h:Float,a:List<Annotation>){a.forEach{when(it){is Annotation.Pen->{if(it.points.size>1){val p=Path();it.points.forEachIndexed{idx,q->if(idx==0)p.moveTo(q.x*w,q.y*h)else p.lineTo(q.x*w,q.y*h)};c.drawPath(p,Paint(3).apply{color=it.color;style=Paint.Style.STROKE;strokeWidth=it.width*2;strokeCap=Paint.Cap.ROUND})}};is Annotation.Text->c.drawText(it.value,it.rect.l*w,it.rect.b*h,Paint(3).apply{color=it.color;textSize=it.size});is Annotation.Highlight->{val p=Paint(3).apply{color=it.color;style=Paint.Style.FILL};it.rects.forEach{x->c.drawRect(x.l*w,x.t*h,x.r*w,x.b*h,p)}}}}}
- fun close(){renderer?.close();renderer=null;file.delete()}
+import java.io.File
+
+data class PdfSearchHit(
+    val page: Int,
+    val bounds: List<Rect>,
+    val query: String
+)
+
+class PdfFile(private val context: Context, private val uri: Uri, private val name: String) {
+    private val file = Files.cache(context, uri, name)
+    private var renderer: PdfRenderer? = null
+
+    fun open() {
+        if (renderer == null) {
+            renderer = PdfRenderer(
+                android.os.ParcelFileDescriptor.open(
+                    file,
+                    android.os.ParcelFileDescriptor.MODE_READ_ONLY
+                )
+            )
+        }
+    }
+
+    fun count(): Int = requireNotNull(renderer).pageCount
+
+    fun render(index: Int, scale: Float): Bitmap {
+        val page = requireNotNull(renderer).openPage(index)
+        val s = scale.coerceIn(.75f, 2.5f)
+        val bitmap = Bitmap.createBitmap(
+            (page.width * s).toInt().coerceAtLeast(1),
+            (page.height * s).toInt().coerceAtLeast(1),
+            Bitmap.Config.ARGB_8888
+        )
+        page.render(
+            bitmap,
+            null,
+            Matrix().apply { setScale(s, s) },
+            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+        )
+        page.close()
+        return bitmap
+    }
+
+    fun searchText(query: String): List<PdfSearchHit> {
+        if (query.isBlank() || Build.VERSION.SDK_INT < 35) return emptyList()
+        val r = requireNotNull(renderer)
+        val hits = mutableListOf<PdfSearchHit>()
+        for (pageIndex in 0 until r.pageCount) {
+            val page = r.openPage(pageIndex)
+            runCatching {
+                page.searchText(query).forEach { match ->
+                    hits += PdfSearchHit(pageIndex, listOf(match.bounds), query)
+                }
+            }
+            page.close()
+        }
+        return hits
+    }
+
+    fun wordAt(pageIndex: Int, x: Int, y: Int): List<Rect> {
+        if (Build.VERSION.SDK_INT < 35) return emptyList()
+        val page = requireNotNull(renderer).openPage(pageIndex)
+        return try {
+            val boundary = android.graphics.pdf.models.selection.SelectionBoundary(Point(x, y))
+            page.selectContent(boundary, boundary)?.selectedTextContents?.flatMap { it.bounds }.orEmpty()
+        } finally {
+            page.close()
+        }
+    }
+
+    fun export(target: Uri, annotations: List<Annotation>) {
+        val r = PdfRenderer(
+            android.os.ParcelFileDescriptor.open(
+                file,
+                android.os.ParcelFileDescriptor.MODE_READ_ONLY
+            )
+        )
+        val out = android.graphics.pdf.PdfDocument()
+        try {
+            for (i in 0 until r.pageCount) {
+                val source = r.openPage(i)
+                val scale = 2f
+                val bitmap = Bitmap.createBitmap(
+                    (source.width * scale).toInt(),
+                    (source.height * scale).toInt(),
+                    Bitmap.Config.ARGB_8888
+                )
+                source.render(
+                    bitmap,
+                    null,
+                    Matrix().apply { setScale(scale, scale) },
+                    PdfRenderer.Page.RENDER_MODE_FOR_PRINT
+                )
+                source.close()
+
+                val info = android.graphics.pdf.PdfDocument.PageInfo.Builder(
+                    bitmap.width,
+                    bitmap.height,
+                    i + 1
+                ).create()
+                val page = out.startPage(info)
+                page.canvas.drawBitmap(bitmap, 0f, 0f, Paint())
+                drawAnnotations(
+                    page.canvas,
+                    bitmap.width.toFloat(),
+                    bitmap.height.toFloat(),
+                    annotations.filter { it.page == i }
+                )
+                out.finishPage(page)
+                bitmap.recycle()
+            }
+
+            context.contentResolver.openOutputStream(target).use { output ->
+                requireNotNull(output)
+                out.writeTo(output!!)
+            }
+        } finally {
+            out.close()
+            r.close()
+        }
+    }
+
+    private fun drawAnnotations(
+        canvas: Canvas,
+        width: Float,
+        height: Float,
+        annotations: List<Annotation>
+    ) {
+        annotations.forEach { annotation ->
+            when (annotation) {
+                is Annotation.Pen -> {
+                    if (annotation.points.size > 1) {
+                        val path = Path()
+                        annotation.points.forEachIndexed { index, point ->
+                            if (index == 0) {
+                                path.moveTo(point.x * width, point.y * height)
+                            } else {
+                                path.lineTo(point.x * width, point.y * height)
+                            }
+                        }
+                        canvas.drawPath(
+                            path,
+                            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                color = annotation.color
+                                style = Paint.Style.STROKE
+                                strokeWidth = annotation.width * 2
+                                strokeCap = Paint.Cap.ROUND
+                                strokeJoin = Paint.Join.ROUND
+                            }
+                        )
+                    }
+                }
+
+                is Annotation.Text -> {
+                    canvas.drawText(
+                        annotation.value,
+                        annotation.rect.l * width,
+                        annotation.rect.b * height,
+                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            color = annotation.color
+                            textSize = annotation.size
+                        }
+                    )
+                }
+
+                is Annotation.Highlight -> {
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = annotation.color
+                        style = Paint.Style.FILL
+                    }
+                    annotation.rects.forEach {
+                        canvas.drawRect(
+                            it.l * width,
+                            it.t * height,
+                            it.r * width,
+                            it.b * height,
+                            paint
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun close() {
+        renderer?.close()
+        renderer = null
+        file.delete()
+    }
 }

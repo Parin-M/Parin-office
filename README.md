@@ -29,3 +29,5 @@ CI runs flutter pub get, flutter analyze, flutter test, split APK builds for arm
 The 300 MB minimum is not created with meaningless padding. Larger release size should come from real compatibility engines, fonts, offline OCR/model assets and useful binaries.
 
 CI checkpoint: current Flutter compiler fixes verified in branch.
+
+CI checkpoint: analyzer info messages are non-fatal; errors and warnings remain fatal.

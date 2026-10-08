@@ -13,6 +13,7 @@ data class RecoverySnapshot(
 
 class AutosaveStore(private val context: Context) {
     private val root = File(context.filesDir, "parin-recovery").apply { mkdirs() }
+    private val newline = 10.toChar().toString()
 
     fun write(snapshot: RecoverySnapshot) {
         val safe = snapshot.documentId.replace(Regex("[^A-Za-z0-9._-]"), "_")
@@ -20,21 +21,14 @@ class AutosaveStore(private val context: Context) {
         val temp = File(root, "$safe.tmp")
 
         val body = buildString {
-            append(snapshot.version).append('
-')
-            append(snapshot.sourceUri.replace("
-", "%0A")).append('
-')
+            append(snapshot.version).append(newline)
+            append(snapshot.sourceUri.replace(newline, "%0A")).append(newline)
             append(snapshot.payload)
         }
 
         temp.writeText(body, StandardCharsets.UTF_8)
-        if (target.exists()) {
-            target.delete()
-        }
-        check(temp.renameTo(target)) {
-            "Unable to atomically publish autosave snapshot"
-        }
+        if (target.exists()) target.delete()
+        check(temp.renameTo(target)) { "Unable to publish autosave snapshot" }
     }
 
     fun read(documentId: String): RecoverySnapshot? {
@@ -45,14 +39,12 @@ class AutosaveStore(private val context: Context) {
         val lines = file.readLines(StandardCharsets.UTF_8)
         if (lines.size < 3) return null
 
-        val version = lines.firstOrNull()?.toLongOrNull() ?: return null
+        val version = lines[0].toLongOrNull() ?: return null
         return RecoverySnapshot(
             documentId = documentId,
-            sourceUri = lines[1].replace("%0A", "
-"),
+            sourceUri = lines[1].replace("%0A", newline),
             version = version,
-            payload = lines.drop(2).joinToString("
-")
+            payload = lines.drop(2).joinToString(newline)
         )
     }
 

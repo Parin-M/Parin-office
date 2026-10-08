@@ -3,13 +3,13 @@ import 'dart:typed_data';
 import 'package:dart_pdf_editor/dart_pdf_editor.dart';
 import 'package:flutter/material.dart';
 
-class PdfEditorScreen extends StatefulWidget {
+class PdfEditorScreen extends StatelessWidget {
   const PdfEditorScreen({super.key, required this.file});
   final File file;
-  @override State<PdfEditorScreen> createState()=>_PdfEditorScreenState();
+  @override 
 }
 
-class _PdfEditorScreenState extends State<PdfEditorScreen>{
+class _PdfEditorScreenState {
   Uint8List? bytes;
   bool loading=true;
 
@@ -17,7 +17,7 @@ class _PdfEditorScreenState extends State<PdfEditorScreen>{
     super.initState();
     widget.file.readAsBytes().then((value){
       if(!mounted)return;
-      setState(()=>{bytes=value;loading=false});
+      setState(() { bytes=value; loading=false; });
     });
   }
 

@@ -22,18 +22,12 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
 object Ooxml {
-    private fun factory() = DocumentBuilderFactory.newInstance().apply {
+    private fun factory(): DocumentBuilderFactory = DocumentBuilderFactory.newInstance().apply {
         isNamespaceAware = true
         setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-        runCatching {
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        }
-        runCatching {
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-        }
-        runCatching {
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-        }
+        runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+        runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
+        runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
         setXIncludeAware(false)
         isExpandEntityReferences = false
     }
@@ -84,24 +78,29 @@ object Ooxml {
 
     fun loadFile(file: File, name: String): OfficeDoc = when {
         name.endsWith(".docx", true) -> ZipFile(file).use { zip ->
-            val entry = zip.getEntry("word/document.xml")
-                ?: return@use OfficeDoc(DocumentKind.DOCX, name)
+            val entry = zip.getEntry("word/document.xml") ?: return@use OfficeDoc(DocumentKind.DOCX, name)
             val document = parse(zip.getInputStream(entry).readBytes())
             OfficeDoc(
                 DocumentKind.DOCX,
                 name,
-                text = all(document, "p").joinToString("
-") { paragraph ->
+                text = all(document, "p").joinToString(System.lineSeparator()) { paragraph ->
                     deep(paragraph, "t").joinToString("") { it.textContent.orEmpty() }
                 }
             )
         }
 
         name.endsWith(".pptx", true) -> ZipFile(file).use { zip ->
-            val names = zip.entries().asSequence()
+            val names = zip.entries()
+                .asSequence()
                 .map { it.name }
-                .filter { it.matches(Regex("ppt/slides/slide[0-9]+\.xml")) }
-                .sortedBy { it.substringAfter("slide").substringBefore(".xml").toInt() }
+                .filter { path ->
+                    path.startsWith("ppt/slides/slide") &&
+                        path.endsWith(".xml") &&
+                        path.removePrefix("ppt/slides/slide").removeSuffix(".xml").toIntOrNull() != null
+                }
+                .sortedBy { path ->
+                    path.removePrefix("ppt/slides/slide").removeSuffix(".xml").toInt()
+                }
                 .toList()
 
             OfficeDoc(
@@ -109,8 +108,7 @@ object Ooxml {
                 name,
                 slides = names.map { path ->
                     val document = parse(zip.getInputStream(zip.getEntry(path)).readBytes())
-                    deep(document, "t").joinToString("
-") { it.textContent.orEmpty() }
+                    deep(document, "t").joinToString(System.lineSeparator()) { it.textContent.orEmpty() }
                 }
             )
         }
@@ -161,10 +159,18 @@ object Ooxml {
             DocumentKind.PPTX -> {
                 var slideIndex = 0
                 rewrite(source, output) { path, bytes ->
-                    if (path.matches(Regex("ppt/slides/slide[0-9]+\.xml"))) {
-                        updatePptx(bytes, document.slides.getOrNull(slideIndex++).orEmpty().split("
-"), format)
-                    } else bytes
+                    if (path.startsWith("ppt/slides/slide") &&
+                        path.endsWith(".xml") &&
+                        path.removePrefix("ppt/slides/slide").removeSuffix(".xml").toIntOrNull() != null
+                    ) {
+                        updatePptx(
+                            bytes,
+                            document.slides.getOrNull(slideIndex++).orEmpty().lines(),
+                            format
+                        )
+                    } else {
+                        bytes
+                    }
                 }
             }
 
@@ -189,8 +195,7 @@ object Ooxml {
 
     private fun updateDocx(bytes: ByteArray, text: String, format: Format): ByteArray {
         val document = parse(bytes)
-        val lines = text.split("
-")
+        val lines = text.lines()
 
         all(document, "p").forEachIndexed { index, paragraph ->
             val targets = deep(paragraph, "t")
@@ -245,9 +250,7 @@ object Ooxml {
         val document = parse(bytes)
         all(document, "c").forEach { cell ->
             val value = values[cell.getAttribute("r")]?.value ?: return@forEach
-            while (cell.firstChild != null) {
-                cell.removeChild(cell.firstChild)
-            }
+            while (cell.firstChild != null) cell.removeChild(cell.firstChild)
             cell.setAttribute("t", "inlineStr")
             val inline = document.createElement("is")
             val text = document.createElement("t")

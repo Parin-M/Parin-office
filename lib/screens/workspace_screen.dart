@@ -70,7 +70,7 @@ class _HomeTools extends StatelessWidget{
         child:SingleChildScrollView(
           child:Container(
             margin:const EdgeInsets.all(28),
-            width:620,minHeight:820,
+            width:620,height:820,
             color:Colors.white,
             padding:const EdgeInsets.fromLTRB(62,58,62,58),
             child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[

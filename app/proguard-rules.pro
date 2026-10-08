@@ -1,2 +1,0 @@
--dontwarn org.w3c.dom.**
--dontwarn javax.xml.**

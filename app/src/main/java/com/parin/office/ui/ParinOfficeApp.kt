@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -292,7 +293,7 @@ private fun drawPen(scope: DrawScope, annotation: Annotation.Pen) {
         val y = point.y * scope.size.height
         if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
     }
-    scope.drawPath(path, ComposeColor(annotation.color), Stroke(width = 4f))
+    scope.drawPath(path, color = ComposeColor(annotation.color), style = Stroke(width = 4f))
 }
 
 @Composable

@@ -27,3 +27,5 @@ The project targets Flutter 3.47. file_picker 13.x now exposes FilePicker.pickFi
 CI runs flutter pub get, flutter analyze, flutter test, split APK builds for arm64-v8a, armeabi-v7a and x86_64, and a universal APK build.
 
 The 300 MB minimum is not created with meaningless padding. Larger release size should come from real compatibility engines, fonts, offline OCR/model assets and useful binaries.
+
+CI checkpoint: current Flutter compiler fixes verified in branch.

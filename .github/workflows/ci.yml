@@ -1,31 +1,54 @@
-name: Parin Office CI
+name: Parin Office Flutter CI
+
 on:
   push:
-    branches: [main, feature/parin-office-core]
+    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2.23.0
         with:
-          distribution: temurin
-          java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
+          channel: stable
+          flutter-version: 3.47.0
+          cache: true
+          pub-cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Generate Android host
+        run: flutter create --platforms=android --org=com.parin.office .
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test
+
+      - name: Build split APKs
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
+
+      - name: Build universal APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
         with:
-          gradle-version: "9.6.0"
-      - name: Verify AGP 9 built-in Kotlin migration
-        run: |
-          if grep -R 'org.jetbrains.kotlin.android' -n --include="*.gradle.kts" .; then
-            echo "org.jetbrains.kotlin.android must not be applied with AGP 9+."
-            exit 1
-          fi
-      - run: gradle --no-daemon assembleDebug --stacktrace
-      - uses: actions/upload-artifact@v4
-        with:
-          name: parin-office-debug
-          path: app/build/outputs/apk/**/*.apk
+          name: parin-office-apks
+          path: |
+            build/app/outputs/flutter-apk/*.apk

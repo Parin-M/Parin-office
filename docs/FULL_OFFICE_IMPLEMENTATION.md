@@ -46,3 +46,7 @@ Never silently flatten an editable document. Rasterization/flattening must be an
 
 ## Release safety
 Production updates must reuse the same signing identity. versionCode is monotonically increasing and semantic version tags drive releases.
+
+## CI verification
+
+This checkpoint exists to verify the AGP 9 built-in Kotlin migration in GitHub Actions before the change is considered release-ready.

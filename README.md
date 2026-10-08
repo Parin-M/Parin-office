@@ -33,3 +33,4 @@ Production APK updates must use the same long-lived signing key. Never generate 
 ## Current status
 
 The repository is being actively expanded. A genuine 100%-feature-equivalent replacement for desktop Microsoft Office is a large engineering program; the current work is implementing that target incrementally rather than claiming unfinished features are already complete.
+\nFlutter rebuild CI checkpoint.\n

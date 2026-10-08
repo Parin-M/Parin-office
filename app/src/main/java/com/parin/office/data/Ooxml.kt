@@ -1,7 +1,11 @@
 package com.parin.office.data
+
 import android.content.Context
 import android.net.Uri
-import com.parin.office.model.*
+import com.parin.office.model.DocumentKind
+import com.parin.office.model.Format
+import com.parin.office.model.OfficeDoc
+import com.parin.office.model.XCell
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -16,23 +20,255 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
-object Ooxml{
- private fun factory()=DocumentBuilderFactory.newInstance().apply{isNamespaceAware=true;setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,true);runCatching{setFeature("http://apache.org/xml/features/disallow-doctype-decl",true)};runCatching{setFeature("http://xml.org/sax/features/external-general-entities",false)};runCatching{setFeature("http://xml.org/sax/features/external-parameter-entities",false)};setXIncludeAware(false);isExpandEntityReferences=false}
- private fun parse(b:ByteArray):Document=factory().newDocumentBuilder().parse(ByteArrayInputStream(b))
- private fun all(d:Document,l:String):List<Element>{val r=mutableListOf<Element>();val n=d.getElementsByTagName("*");for(i in 0 until n.length){val e=n.item(i) as? Element?:continue;if(e.localName==l||e.nodeName.endsWith(":$l"))r+=e};return r}
- private fun deep(n:Node,l:String):List<Element>{val r=mutableListOf<Element>();val c=n.childNodes;for(i in 0 until c.length){val x=c.item(i);if(x.nodeType==Node.ELEMENT_NODE){val e=x as Element;if(e.localName==l||e.nodeName.endsWith(":$l"))r+=e;r+=deep(x,l)}};return r}
- private fun serial(d:Document):ByteArray{val t=TransformerFactory.newInstance().newTransformer().apply{setOutputProperty(OutputKeys.ENCODING,"UTF-8")};return java.io.ByteArrayOutputStream().use{o->t.transform(DOMSource(d),StreamResult(o));o.toByteArray()}}
- fun load(c:Context,u:Uri,n:String)=loadFile(Files.cache(c,u,n),n)
- fun loadFile(f:File,n:String):OfficeDoc=when{
-  n.endsWith(".docx",true)->ZipFile(f).use{z->val e=z.getEntry("word/document.xml")?:return@use OfficeDoc(DocumentKind.DOCX,n);val d=parse(z.getInputStream(e).readBytes());OfficeDoc(DocumentKind.DOCX,n,text=all(d,"p").joinToString("\n"){p->deep(p,"t").joinToString(""){it.textContent?:""}})}
-  n.endsWith(".pptx",true)->ZipFile(f).use{z->val ns=z.entries().asSequence().map{it.name}.filter{it.matches(Regex("ppt/slides/slide[0-9]+\\.xml"))}.sortedBy{it.substringAfter("slide").substringBefore(".xml").toInt()};OfficeDoc(DocumentKind.PPTX,n,slides=ns.map{p->val d=parse(z.getInputStream(z.getEntry(p)).readBytes());deep(d,"t").joinToString("\n"){it.textContent?:""}})}
-  n.endsWith(".xlsx",true)->ZipFile(f).use{z->val shared=z.getEntry("xl/sharedStrings.xml")?.let{e->val d=parse(z.getInputStream(e).readBytes());all(d,"si").map{deep(it,"t").joinToString(""){x->x.textContent?:""}}}?:emptyList();val e=z.getEntry("xl/worksheets/sheet1.xml")?:return@use OfficeDoc(DocumentKind.XLSX,n);val d=parse(z.getInputStream(e).readBytes());OfficeDoc(DocumentKind.XLSX,n,cells=all(d,"c").mapNotNull{cell->val ref=cell.getAttribute("r").takeIf{it.isNotBlank()}?:return@mapNotNull null;val raw=deep(cell,"v").firstOrNull()?.textContent.orEmpty();val v=when(cell.getAttribute("t")){"s"->shared.getOrNull(raw.toIntOrNull()?:-1).orEmpty();"inlineStr"->deep(cell,"t").joinToString(""){x->x.textContent?:""};else->raw};XCell(ref,v)}.take(400))}
-  else->OfficeDoc(DocumentKind.UNSUPPORTED,n)
- }
- fun save(c:Context,u:Uri,d:OfficeDoc,f:Format){val src=Files.cache(c,u,d.name);val out=File.createTempFile("parin-","-out",c.cacheDir);when(d.kind){DocumentKind.DOCX->rewrite(src,out){p,b->if(p=="word/document.xml")docx(b,d.text,f)else b};DocumentKind.PPTX->{var i=0;rewrite(src,out){p,b->if(p.matches(Regex("ppt/slides/slide[0-9]+\\.xml"))){val x=d.slides.getOrNull(i++).orEmpty();pptx(b,x.split("\n"),f)}else b}};DocumentKind.XLSX->{val m=d.cells.associateBy{it.ref};rewrite(src,out){p,b->if(p=="xl/worksheets/sheet1.xml")xlsx(b,m)else b}};else->return};c.contentResolver.openOutputStream(u,"wt").use{target->requireNotNull(target);out.inputStream().use{it.copyTo(target!!)}};src.delete();out.delete()}
- private fun docx(b:ByteArray,text:String,f:Format):ByteArray{val d=parse(b);val lines=text.split("\n");all(d,"p").forEachIndexed{i,p->val ts=deep(p,"t");ts.forEachIndexed{j,t->t.textContent=if(j==0)lines.getOrNull(i).orEmpty()else""}};all(d,"r").forEach{r->var rp=deep(r,"rPr").firstOrNull();if(rp==null){rp=d.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","w:rPr");r.insertBefore(rp,r.firstChild)};toggle(d,rp,"b",f.bold);toggle(d,rp,"i",f.italic);toggle(d,rp,"u",f.underline)};return serial(d)}
- private fun toggle(d:Document,p:Element,t:String,on:Boolean){deep(p,t).forEach{p.removeChild(it)};if(on)p.appendChild(d.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","w:$t"))}
- private fun pptx(b:ByteArray,lines:List<String>,f:Format):ByteArray{val d=parse(b);all(d,"t").forEachIndexed{i,e->e.textContent=lines.getOrNull(i).orEmpty()};all(d,"rPr").forEach{r->if(f.bold)r.setAttribute("b","1")else r.removeAttribute("b");if(f.italic)r.setAttribute("i","1")else r.removeAttribute("i");if(f.underline)r.setAttribute("u","sng")else r.removeAttribute("u")};return serial(d)}
- private fun xlsx(b:ByteArray,m:Map<String,XCell>):ByteArray{val d=parse(b);all(d,"c").forEach{c->val v=m[c.getAttribute("r")]?.value?:return@forEach;while(c.firstChild!=null)c.removeChild(c.firstChild);c.setAttribute("t","inlineStr");val isN=d.createElement("is");val t=d.createElement("t");t.textContent=v;isN.appendChild(t);c.appendChild(isN)};return serial(d)}
- private fun rewrite(src:File,out:File,repl:(String,ByteArray)->ByteArray){ZipFile(src).use{z->ZipOutputStream(out.outputStream().buffered()).use{o->z.entries().asSequence().forEach{e->o.putNextEntry(ZipEntry(e.name));z.getInputStream(e).use{i->o.write(repl(e.name,i.readBytes()))};o.closeEntry()}}}}
+
+object Ooxml {
+    private fun factory() = DocumentBuilderFactory.newInstance().apply {
+        isNamespaceAware = true
+        setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+        runCatching {
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+        }
+        runCatching {
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+        }
+        runCatching {
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+        }
+        setXIncludeAware(false)
+        isExpandEntityReferences = false
+    }
+
+    private fun parse(bytes: ByteArray): Document =
+        factory().newDocumentBuilder().parse(ByteArrayInputStream(bytes))
+
+    private fun all(document: Document, local: String): List<Element> {
+        val result = mutableListOf<Element>()
+        val nodes = document.getElementsByTagName("*")
+        for (i in 0 until nodes.length) {
+            val element = nodes.item(i) as? Element ?: continue
+            if (element.localName == local || element.nodeName.endsWith(":$local")) {
+                result += element
+            }
+        }
+        return result
+    }
+
+    private fun deep(node: Node, local: String): List<Element> {
+        val result = mutableListOf<Element>()
+        val children = node.childNodes
+        for (i in 0 until children.length) {
+            val child = children.item(i)
+            if (child.nodeType == Node.ELEMENT_NODE) {
+                val element = child as Element
+                if (element.localName == local || element.nodeName.endsWith(":$local")) {
+                    result += element
+                }
+                result += deep(child, local)
+            }
+        }
+        return result
+    }
+
+    private fun serialize(document: Document): ByteArray {
+        val transformer = TransformerFactory.newInstance().newTransformer().apply {
+            setOutputProperty(OutputKeys.ENCODING, "UTF-8")
+        }
+        return java.io.ByteArrayOutputStream().use { output ->
+            transformer.transform(DOMSource(document), StreamResult(output))
+            output.toByteArray()
+        }
+    }
+
+    fun load(context: Context, uri: Uri, name: String): OfficeDoc =
+        loadFile(Files.cache(context, uri, name), name)
+
+    fun loadFile(file: File, name: String): OfficeDoc = when {
+        name.endsWith(".docx", true) -> ZipFile(file).use { zip ->
+            val entry = zip.getEntry("word/document.xml")
+                ?: return@use OfficeDoc(DocumentKind.DOCX, name)
+            val document = parse(zip.getInputStream(entry).readBytes())
+            OfficeDoc(
+                DocumentKind.DOCX,
+                name,
+                text = all(document, "p").joinToString("
+") { paragraph ->
+                    deep(paragraph, "t").joinToString("") { it.textContent.orEmpty() }
+                }
+            )
+        }
+
+        name.endsWith(".pptx", true) -> ZipFile(file).use { zip ->
+            val names = zip.entries().asSequence()
+                .map { it.name }
+                .filter { it.matches(Regex("ppt/slides/slide[0-9]+\.xml")) }
+                .sortedBy { it.substringAfter("slide").substringBefore(".xml").toInt() }
+                .toList()
+
+            OfficeDoc(
+                DocumentKind.PPTX,
+                name,
+                slides = names.map { path ->
+                    val document = parse(zip.getInputStream(zip.getEntry(path)).readBytes())
+                    deep(document, "t").joinToString("
+") { it.textContent.orEmpty() }
+                }
+            )
+        }
+
+        name.endsWith(".xlsx", true) -> ZipFile(file).use { zip ->
+            val shared = zip.getEntry("xl/sharedStrings.xml")?.let { entry ->
+                val document = parse(zip.getInputStream(entry).readBytes())
+                all(document, "si").map { item ->
+                    deep(item, "t").joinToString("") { it.textContent.orEmpty() }
+                }
+            }.orEmpty()
+
+            val entry = zip.getEntry("xl/worksheets/sheet1.xml")
+                ?: return@use OfficeDoc(DocumentKind.XLSX, name)
+            val document = parse(zip.getInputStream(entry).readBytes())
+
+            OfficeDoc(
+                DocumentKind.XLSX,
+                name,
+                cells = all(document, "c").mapNotNull { cell ->
+                    val reference = cell.getAttribute("r")
+                        .takeIf { it.isNotBlank() }
+                        ?: return@mapNotNull null
+                    val raw = deep(cell, "v").firstOrNull()?.textContent.orEmpty()
+                    val value = when (cell.getAttribute("t")) {
+                        "s" -> shared.getOrNull(raw.toIntOrNull() ?: -1).orEmpty()
+                        "inlineStr" -> deep(cell, "t").joinToString("") { it.textContent.orEmpty() }
+                        else -> raw
+                    }
+                    XCell(reference, value)
+                }.take(400)
+            )
+        }
+
+        else -> OfficeDoc(DocumentKind.UNSUPPORTED, name)
+    }
+
+    fun save(context: Context, uri: Uri, document: OfficeDoc, format: Format) {
+        val source = Files.cache(context, uri, document.name)
+        val output = File.createTempFile("parin-", "-out", context.cacheDir)
+
+        when (document.kind) {
+            DocumentKind.DOCX ->
+                rewrite(source, output) { path, bytes ->
+                    if (path == "word/document.xml") updateDocx(bytes, document.text, format) else bytes
+                }
+
+            DocumentKind.PPTX -> {
+                var slideIndex = 0
+                rewrite(source, output) { path, bytes ->
+                    if (path.matches(Regex("ppt/slides/slide[0-9]+\.xml"))) {
+                        updatePptx(bytes, document.slides.getOrNull(slideIndex++).orEmpty().split("
+"), format)
+                    } else bytes
+                }
+            }
+
+            DocumentKind.XLSX -> {
+                val values = document.cells.associateBy { it.ref }
+                rewrite(source, output) { path, bytes ->
+                    if (path == "xl/worksheets/sheet1.xml") updateXlsx(bytes, values) else bytes
+                }
+            }
+
+            else -> return
+        }
+
+        context.contentResolver.openOutputStream(uri, "wt").use { target ->
+            requireNotNull(target)
+            output.inputStream().use { input -> input.copyTo(target!!) }
+        }
+
+        source.delete()
+        output.delete()
+    }
+
+    private fun updateDocx(bytes: ByteArray, text: String, format: Format): ByteArray {
+        val document = parse(bytes)
+        val lines = text.split("
+")
+
+        all(document, "p").forEachIndexed { index, paragraph ->
+            val targets = deep(paragraph, "t")
+            targets.forEachIndexed { textIndex, target ->
+                target.textContent = if (textIndex == 0) lines.getOrNull(index).orEmpty() else ""
+            }
+        }
+
+        all(document, "r").forEach { run ->
+            var properties = deep(run, "rPr").firstOrNull()
+            if (properties == null) {
+                properties = document.createElementNS(
+                    "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                    "w:rPr"
+                )
+                run.insertBefore(properties, run.firstChild)
+            }
+            toggle(document, properties, "b", format.bold)
+            toggle(document, properties, "i", format.italic)
+            toggle(document, properties, "u", format.underline)
+        }
+
+        return serialize(document)
+    }
+
+    private fun toggle(document: Document, parent: Element, tag: String, enabled: Boolean) {
+        deep(parent, tag).forEach { parent.removeChild(it) }
+        if (enabled) {
+            parent.appendChild(
+                document.createElementNS(
+                    "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                    "w:$tag"
+                )
+            )
+        }
+    }
+
+    private fun updatePptx(bytes: ByteArray, lines: List<String>, format: Format): ByteArray {
+        val document = parse(bytes)
+        all(document, "t").forEachIndexed { index, target ->
+            target.textContent = lines.getOrNull(index).orEmpty()
+        }
+        all(document, "rPr").forEach { properties ->
+            if (format.bold) properties.setAttribute("b", "1") else properties.removeAttribute("b")
+            if (format.italic) properties.setAttribute("i", "1") else properties.removeAttribute("i")
+            if (format.underline) properties.setAttribute("u", "sng") else properties.removeAttribute("u")
+        }
+        return serialize(document)
+    }
+
+    private fun updateXlsx(bytes: ByteArray, values: Map<String, XCell>): ByteArray {
+        val document = parse(bytes)
+        all(document, "c").forEach { cell ->
+            val value = values[cell.getAttribute("r")]?.value ?: return@forEach
+            while (cell.firstChild != null) {
+                cell.removeChild(cell.firstChild)
+            }
+            cell.setAttribute("t", "inlineStr")
+            val inline = document.createElement("is")
+            val text = document.createElement("t")
+            text.textContent = value
+            inline.appendChild(text)
+            cell.appendChild(inline)
+        }
+        return serialize(document)
+    }
+
+    private fun rewrite(source: File, output: File, replacer: (String, ByteArray) -> ByteArray) {
+        ZipFile(source).use { zip ->
+            ZipOutputStream(output.outputStream().buffered()).use { out ->
+                zip.entries().asSequence().forEach { entry ->
+                    out.putNextEntry(ZipEntry(entry.name))
+                    zip.getInputStream(entry).use { input ->
+                        out.write(replacer(entry.name, input.readBytes()))
+                    }
+                    out.closeEntry()
+                }
+            }
+        }
+    }
 }

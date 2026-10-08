@@ -3,7 +3,7 @@ package com.parin.office.core.command
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-fun interface EditCommand {
+interface EditCommand {
     fun apply()
     fun undo()
 }
@@ -17,7 +17,9 @@ class CommandStack(private val maxDepth: Int = 250) {
         command.apply()
         undoStack.addLast(command)
         redoStack.clear()
-        while (undoStack.size > maxDepth) undoStack.removeFirst()
+        while (undoStack.size > maxDepth) {
+            undoStack.removeFirst()
+        }
     }
 
     suspend fun undo() = mutex.withLock {
@@ -39,6 +41,6 @@ class CommandStack(private val maxDepth: Int = 250) {
         redoStack.clear()
     }
 
-    fun canUndo() = undoStack.isNotEmpty()
-    fun canRedo() = redoStack.isNotEmpty()
+    fun canUndo(): Boolean = undoStack.isNotEmpty()
+    fun canRedo(): Boolean = redoStack.isNotEmpty()
 }

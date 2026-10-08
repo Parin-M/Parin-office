@@ -1,35 +1,29 @@
-# Parin Office
+Parin Office — Flutter rebuild
 
-Parin Office is a Kotlin + Jetpack Compose Android office suite project.
+Parin Office is a professional adaptive office workspace being rebuilt in Flutter for Android phones and tablets.
 
-## Main branch
+New direction
 
-The main branch now contains:
-- A new minimal Parin Office launcher icon.
-- PDF rendering/export foundation with pen, text, free-highlight and selective eraser primitives.
-- PDF text search/word-selection integration points using the current Android PdfRenderer APIs.
-- DOCX/PPTX/XLSX OOXML access and editing foundation.
-- Storage Access Framework integration and recent-document persistence.
-- Light, flat, Windows-Phone-inspired UI.
-- 16-language localization architecture.
-- Command/undo-redo infrastructure and document capability model.
-- CI and GitHub Release workflow with ABI split configuration for armeabi-v7a, arm64-v8a and x86_64.
+- Clean Flutter/Dart application shell replacing the legacy Kotlin prototype.
+- Phone and tablet adaptive navigation.
+- Office-style ribbon workspace.
+- 128 generated color themes.
+- System, Light, Dark and AMOLED modes.
+- 16 locale choices with RTL for Persian, Arabic and Hebrew.
+- Real PDF editing integration through dart_pdf_editor.
+- Dedicated Word, PowerPoint and Excel workspace surfaces.
 
-## Full Office target
+Full Office target
 
-Development is now moving from the foundation toward a full mobile office editor:
-- Word: layout engine, styles, sections, tables, lists, images, headers/footers, comments, track changes, fields, pagination and print preview.
-- PowerPoint: slide canvas, shapes, connectors, groups, themes, masters, media, tables, charts, transitions and presentation mode.
-- Excel: virtualized grid, formulas/evaluation, styling, merged cells, validation, filtering, sorting, freeze panes, charts and print layout.
-- PDF: exact text selection/highlighting, annotation object lifecycle, search navigation, forms, signatures, redaction, page organizer and advanced export.
-- Shared platform: clipboard, find/replace, accessibility, RTL, autosave, crash recovery, safe document transactions, migrations and versioned data.
+Word: layout, pagination, styles, sections, tables, headers/footers, fields, comments, tracked changes, images and print layout.
+PowerPoint: slide canvas, shapes, connectors, themes, masters, media, tables, charts, transitions and presentation mode.
+Excel: virtualized grid, formulas, styling, merged cells, conditional formatting, filtering, sorting, freeze panes, validation, named ranges, charts and print areas.
+PDF: advanced annotations, forms, signatures, redaction, OCR, page management and exports.
 
-The project deliberately uses modular engines so improving one format does not require replacing the application shell or breaking user documents.
+Build
 
-## Release safety
+The project targets Flutter 3.47. file_picker 13.x now exposes FilePicker.pickFiles() and FilePicker.saveFile() directly; the old FilePicker.platform API is no longer used.
 
-Production APK updates must use the same long-lived signing key. Never generate a new production key for every version. CI must only publish a release after the build and package verification steps pass.
+CI runs flutter pub get, flutter analyze, flutter test, split APK builds for arm64-v8a, armeabi-v7a and x86_64, and a universal APK build.
 
-## Current status
-
-The repository is being actively expanded. A genuine 100%-feature-equivalent replacement for desktop Microsoft Office is a large engineering program; the current work is implementing that target incrementally rather than claiming unfinished features are already complete.
+The 300 MB minimum is not created with meaningless padding. Larger release size should come from real compatibility engines, fonts, offline OCR/model assets and useful binaries.

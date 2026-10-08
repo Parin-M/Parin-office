@@ -6,17 +6,16 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.Rect
 import android.graphics.Point
+import android.graphics.RectF
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import com.parin.office.model.Annotation
-import java.io.File
 
 data class PdfSearchHit(
     val page: Int,
-    val bounds: List<Rect>,
+    val bounds: List<RectF>,
     val query: String
 )
 
@@ -58,25 +57,35 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
     fun searchText(query: String): List<PdfSearchHit> {
         if (query.isBlank() || Build.VERSION.SDK_INT < 35) return emptyList()
         val r = requireNotNull(renderer)
-        val hits = mutableListOf<PdfSearchHit>()
+        val result = mutableListOf<PdfSearchHit>()
+
         for (pageIndex in 0 until r.pageCount) {
             val page = r.openPage(pageIndex)
             runCatching {
                 page.searchText(query).forEach { match ->
-                    hits += PdfSearchHit(pageIndex, listOf(match.bounds), query)
+                    result += PdfSearchHit(
+                        page = pageIndex,
+                        bounds = match.bounds.toList(),
+                        query = query
+                    )
                 }
             }
             page.close()
         }
-        return hits
+
+        return result
     }
 
-    fun wordAt(pageIndex: Int, x: Int, y: Int): List<Rect> {
+    fun wordAt(pageIndex: Int, x: Int, y: Int): List<RectF> {
         if (Build.VERSION.SDK_INT < 35) return emptyList()
+
         val page = requireNotNull(renderer).openPage(pageIndex)
         return try {
             val boundary = android.graphics.pdf.models.selection.SelectionBoundary(Point(x, y))
-            page.selectContent(boundary, boundary)?.selectedTextContents?.flatMap { it.bounds }.orEmpty()
+            page.selectContent(boundary, boundary)
+                ?.selectedTextContents
+                ?.flatMap { it.bounds }
+                .orEmpty()
         } finally {
             page.close()
         }
@@ -90,6 +99,7 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
             )
         )
         val out = android.graphics.pdf.PdfDocument()
+
         try {
             for (i in 0 until r.pageCount) {
                 val source = r.openPage(i)
@@ -99,6 +109,7 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
                     (source.height * scale).toInt(),
                     Bitmap.Config.ARGB_8888
                 )
+
                 source.render(
                     bitmap,
                     null,
@@ -108,10 +119,9 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
                 source.close()
 
                 val info = android.graphics.pdf.PdfDocument.PageInfo.Builder(
-                    bitmap.width,
-                    bitmap.height,
-                    i + 1
+                    bitmap.width, bitmap.height, i + 1
                 ).create()
+
                 val page = out.startPage(info)
                 page.canvas.drawBitmap(bitmap, 0f, 0f, Paint())
                 drawAnnotations(
@@ -134,23 +144,15 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
         }
     }
 
-    private fun drawAnnotations(
-        canvas: Canvas,
-        width: Float,
-        height: Float,
-        annotations: List<Annotation>
-    ) {
+    private fun drawAnnotations(canvas: Canvas, width: Float, height: Float, annotations: List<Annotation>) {
         annotations.forEach { annotation ->
             when (annotation) {
                 is Annotation.Pen -> {
                     if (annotation.points.size > 1) {
                         val path = Path()
                         annotation.points.forEachIndexed { index, point ->
-                            if (index == 0) {
-                                path.moveTo(point.x * width, point.y * height)
-                            } else {
-                                path.lineTo(point.x * width, point.y * height)
-                            }
+                            if (index == 0) path.moveTo(point.x * width, point.y * height)
+                            else path.lineTo(point.x * width, point.y * height)
                         }
                         canvas.drawPath(
                             path,
@@ -165,17 +167,15 @@ class PdfFile(private val context: Context, private val uri: Uri, private val na
                     }
                 }
 
-                is Annotation.Text -> {
-                    canvas.drawText(
-                        annotation.value,
-                        annotation.rect.l * width,
-                        annotation.rect.b * height,
-                        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                            color = annotation.color
-                            textSize = annotation.size
-                        }
-                    )
-                }
+                is Annotation.Text -> canvas.drawText(
+                    annotation.value,
+                    annotation.rect.l * width,
+                    annotation.rect.b * height,
+                    Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = annotation.color
+                        textSize = annotation.size
+                    }
+                )
 
                 is Annotation.Highlight -> {
                     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

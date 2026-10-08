@@ -29,7 +29,7 @@ jobs:
         run: flutter --version
 
       - name: Generate Android host
-        run: flutter create --platforms=android --org=com.parin.office .
+        run: flutter create --empty --platforms=android --org=com.parin.office .
 
       - name: Dependencies
         run: flutter pub get

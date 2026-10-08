@@ -14,17 +14,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Future<void> openFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf','docx','pptx','xlsx'],
-    );
-    final path = result?.files.single.path;
-    if (!mounted || path == null) return;
-    final ext = path.split('.').last.toLowerCase();
+    final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf','docx','pptx','xlsx']);
+    if (!mounted || files.isEmpty) return;
+    final file = files.first;
+    final ext = (file.extension ?? file.name.split('.').last).toLowerCase();
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ext == 'pdf'
-          ? PdfEditorScreen(file: File(path))
-          : WorkspaceScreen(file: File(path), filter: 'opened'),
+          ? PdfEditorScreen(bytes: bytes, fileName: file.name)
+          : WorkspaceScreen(bytes: bytes, fileName: file.name, filter: 'opened'),
     ));
   }
 

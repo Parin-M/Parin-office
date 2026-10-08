@@ -75,6 +75,7 @@ class AppState extends ChangeNotifier{
    case AppearanceMode.amoled:return Brightness.dark;
   }
  }
+ ThemePreset get preset=>ThemeCatalog.presets[themeIndex];
  bool get amoled=>mode==AppearanceMode.amoled;
 }
 
@@ -182,7 +183,7 @@ class _OfficeWorkbenchState extends State<OfficeWorkbench>{
  final names=['Home','Insert','Review','View'];
  @override Widget build(BuildContext c)=>Column(children:[
   SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:List.generate(names.length,(i)=>Padding(padding:const EdgeInsets.symmetric(horizontal:5),child:ChoiceChip(label:Text(names[i]),selected:tab==i,onSelected:(_)=>setState(()=>tab=i)))))),
-  const Divider(height:1),Expanded(child:switch(tab){0:_wordCanvas(c),1:_insert(c),2:_review(c),_:_view(c)})
+  const Divider(height:1),Expanded(child:switch(tab){0=>_wordCanvas(c),1=>_insert(c),2=>_review(c),_=>_view(c)})
  ]);
  Widget _wordCanvas(BuildContext c)=>Column(children:[
   Padding(padding:const EdgeInsets.all(10),child:SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[

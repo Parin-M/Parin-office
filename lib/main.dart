@@ -155,8 +155,8 @@ class ThemeCatalog {
         selectedIconTheme:IconThemeData(color:primary),
         unselectedIconTheme:IconThemeData(color:scheme.onSurfaceVariant),
       ),
-      snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
-      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22))),
+      snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(6))),
+      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(6))),
       bottomSheetTheme:BottomSheetThemeData(backgroundColor:surface,showDragHandle:true),
       switchTheme:SwitchThemeData(
         thumbColor:WidgetStateProperty.resolveWith((states)=>states.contains(WidgetState.selected)?scheme.onPrimary:scheme.onSurfaceVariant),
@@ -542,7 +542,7 @@ class Dashboard extends StatelessWidget {
         const SizedBox(height:8),Text(t('welcomeSub')),const SizedBox(height:16),
         for(final kind in OfficeKind.values)
           ListTile(
-            leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(14)),child:Icon(kind.icon,color:kind.color)),
+            leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(5)),child:Icon(kind.icon,color:kind.color)),
             title:Text(kind.label,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(kind.description),
             trailing:const Icon(Icons.arrow_forward_ios_rounded,size:16),
             onTap:(){Navigator.of(sheet).pop();create(context,kind);})
@@ -571,7 +571,7 @@ class Dashboard extends StatelessWidget {
                   theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?52:28),
                   theme.colorScheme.secondary.withAlpha(theme.brightness==Brightness.dark?34:20),
                   theme.colorScheme.surface]),
-                borderRadius:BorderRadius.circular(28),
+                borderRadius:BorderRadius.circular(6),
                 border:Border.all(color:theme.colorScheme.outlineVariant)),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),
@@ -629,7 +629,7 @@ class Dashboard extends StatelessWidget {
 }
 
 
-class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
+class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(6)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
 class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}
 
 class NewDocumentPage extends StatefulWidget {
@@ -718,7 +718,7 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
         actions:[IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close_rounded))]),
       body:Center(child:ConstrainedBox(constraints:BoxConstraints(maxWidth:widget.state.focusMode?720:900),child:ListView(padding:const EdgeInsets.fromLTRB(20,12,20,32),children:[
         if(!widget.state.focusMode)
-          Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.outlineVariant)),
+          Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(6),border:Border.all(color:theme.colorScheme.outlineVariant)),
           child:Row(children:[const BrandMark(size:44),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(widget.kind.label,style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:4),Text(widget.kind.description,style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))]))])),
@@ -877,8 +877,8 @@ class WorkspaceHome extends StatelessWidget {
   Widget _tile(BuildContext context,(IconData,String,String,VoidCallback) item) {
     final theme=Theme.of(context);
     return Card(clipBehavior:Clip.antiAlias,child:InkWell(
-      borderRadius:BorderRadius.circular(20),onTap:item.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
-        Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(15)),
+      borderRadius:BorderRadius.circular(6),onTap:item.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+        Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(5)),
           child:Icon(item.$1,color:theme.colorScheme.primary)),
         const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(item.$2,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:4),
@@ -950,7 +950,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,32),children:[
         Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(
           color:theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?32:16),
-          borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.primary.withAlpha(48))),
+          borderRadius:BorderRadius.circular(6),border:Border.all(color:theme.colorScheme.primary.withAlpha(48))),
           child:Row(children:[const BrandMark(size:46),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(t('appearance'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:4),Text(t('paletteHint'),style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.4))]))])),
@@ -970,7 +970,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _section(String title,String subtitle,IconData icon,List<Widget> children)=>Card(clipBehavior:Clip.antiAlias,
     child:Theme(data:Theme.of(context).copyWith(dividerColor:Colors.transparent),child:ExpansionTile(
       initiallyExpanded:true,tilePadding:const EdgeInsets.symmetric(horizontal:15,vertical:3),childrenPadding:const EdgeInsets.fromLTRB(12,0,12,14),
-      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(13)),
+      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(5)),
         child:Icon(icon,color:Theme.of(context).colorScheme.primary)),
       title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis),children:children)));
 
@@ -1014,10 +1014,10 @@ class _SettingsPageState extends State<SettingsPage> {
         gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:114,mainAxisExtent:86,crossAxisSpacing:9,mainAxisSpacing:9),
         itemBuilder:(context,i){
           final preset=presets[i]; final selected=state.preset.name==presets[i].name;
-          return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(16),
+          return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(6),
             onTap:()=>state.setTheme(ThemeCatalog.presets.indexOf(preset)),
             child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:theme.colorScheme.surface,
-              borderRadius:BorderRadius.circular(16),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
+              borderRadius:BorderRadius.circular(6),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Expanded(child:ClipRRect(borderRadius:BorderRadius.circular(10),child:Row(children:[
                   Expanded(child:ColoredBox(color:preset.primary)),Expanded(child:ColoredBox(color:preset.secondary)),

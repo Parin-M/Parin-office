@@ -25,11 +25,20 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
+      - name: Generate launcher image assets
+        run: python3 tool/generate_launcher_assets.py
+
       - name: Generate Android host
         run: flutter create --empty --platforms=android --org=com.parin.office .
 
+      - name: Set app display name
+        run: sed -i 's/android:label="parin_office"/android:label="Parin Office"/' android/app/src/main/AndroidManifest.xml
+
       - name: Dependencies
         run: flutter pub get
+
+      - name: Generate Android launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Analyze
         run: flutter analyze

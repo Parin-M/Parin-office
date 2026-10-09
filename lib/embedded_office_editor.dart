@@ -864,126 +864,51 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
+    final direction = Directionality.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF1F3F4),
+      body: SafeArea(
+        child: Column(
           children: [
-            Text(widget.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              'On-device editing • $_extension'.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Document actions',
-            onSelected: _action,
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'find', child: Text('Find')),
-              PopupMenuItem(value: 'replace', child: Text('Find and replace')),
-              PopupMenuItem(value: 'select', child: Text('Select all')),
-              PopupMenuItem(value: 'spell', child: Text('Spell check')),
-              PopupMenuItem(value: 'print', child: Text('Print')),
-            ],
-          ),
-          IconButton(
-            tooltip: 'Export as PDF',
-            onPressed: _loading || _saving || _error != null ? null : _shareAsPdf,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-          ),
-          IconButton(
-            tooltip: 'Save to file',
-            onPressed: _loading || _saving || _error != null ? null : _save,
-            icon: _saving
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.save_outlined),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: _error != null
-          ? Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.description_outlined, size: 52),
-                      const SizedBox(height: 14),
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No upload or server conversion was attempted. The original file has not been overwritten.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          : _loading
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      const SizedBox(height: 14),
-                      Text(_progress),
-                    ],
-                  ),
-                )
-              : Column(
+            _documentHeader(context),
+            _menuBar(),
+            _toolbar(),
+            Expanded(
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
                   children: [
-                    Material(
-                      color: Theme.of(context).colorScheme.surface,
-                      child: SizedBox(
-                        height: 52,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          children: _toolbarActions(),
-                        ),
+                    if (_outlineOpen)
+                      Directionality(
+                        textDirection: direction,
+                        child: _outlinePanel(context),
                       ),
-                    ),
-                    const Divider(height: 1),
                     Expanded(
-                      child: switch (_extension) {
-                        'docx' => QudsWordEditor(controller: _word!),
-                        'xlsx' => QudsSheetEditor(
-                            controller: _sheet!,
-                            frozenRows: 0,
-                            frozenCols: 0,
-                          ),
-                        'pptx' => QudsSlideEditor(controller: _slides!),
-                        _ => const Center(child: Text('Unsupported document format')),
-                      },
-                    ),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      child: Text(
-                        [
-                          controller?.isDirty == true ? 'Unsaved changes' : 'Ready',
-                          if (_word != null) 'Word',
-                          if (_sheet != null) 'Sheet ${_sheet!.activeSheetIndex + 1} • ${_sheet!.selectionAddress}',
-                          if (_slides != null) 'Slide ${_slides!.activeSlideIndex + 1}',
-                          'Offline engine',
-                        ].join('  •  '),
-                        style: Theme.of(context).textTheme.labelSmall,
+                      child: Container(
+                        color: const Color(0xFFF1F3F4),
+                        child: _editorCanvas(),
                       ),
                     ),
                   ],
                 ),
+              ),
+            ),
+            _statusBar(),
+          ],
+        ),
+      ),
     );
   }
+}
+
+class _RibbonDivider extends StatelessWidget {
+  const _RibbonDivider();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+        child: Container(width: 1, height: 28, color: const Color(0xFFDADCE0)),
+      );
 }
 
 String _safeName(String value) {

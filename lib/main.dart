@@ -599,59 +599,418 @@ class _ParinOfficeAppState extends State<ParinOfficeApp> {
   }
 }
 
-class Shell extends StatefulWidget{const Shell({super.key,required this.state});final AppState state;@override State<Shell>createState()=>_ShellState();}
-class _ShellState extends State<Shell>{
- int index=0;
- @override Widget build(BuildContext context){
-  final t=(String k)=>L10n.text(widget.state.locale,k);
-  final items=[(Icons.home_rounded,t('home')),(Icons.description_outlined,t('recent')),(Icons.dashboard_customize_outlined,t('workspace')),(Icons.settings_outlined,t('settings'))];
-  final pages=[Dashboard(state:widget.state),const RecentPage(),const WorkspaceHome(),SettingsPage(state:widget.state)];
-  return LayoutBuilder(builder:(context,c){
-   if(c.maxWidth>=900)return Scaffold(body:Row(children:[
-    SizedBox(width:270,child:NavigationRail(
-     extended:true,selectedIndex:index,onDestinationSelected:(v)=>setState(()=>index=v),
-     leading:Padding(padding:const EdgeInsets.all(18),child:Row(children:[
-      Container(width:42,height:42,decoration:BoxDecoration(color:widget.state.preset.primary,borderRadius:BorderRadius.circular(14)),child:const Icon(Icons.auto_awesome_rounded,color:Colors.white)),
-      const SizedBox(width:10),const Text('Parin Office',style:TextStyle(fontWeight:FontWeight.w900,fontSize:20))
-     ])),
-     destinations:items.map((x)=>NavigationRailDestination(icon:Icon(x.$1),label:Text(x.$2))).toList())),
-    const VerticalDivider(width:1),Expanded(child:pages[index])]));
-   return Scaffold(body:pages[index],bottomNavigationBar:NavigationBar(selectedIndex:index,onDestinationSelected:(v)=>setState(()=>index=v),destinations:items.map((x)=>NavigationDestination(icon:Icon(x.$1),label:x.$2)).toList()));
-  });
- }
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, required this.size});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.15),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [colors.primary, colors.secondary]),
+        borderRadius: BorderRadius.circular(size * 0.28),
+        boxShadow: [BoxShadow(color: colors.primary.withValues(alpha: 0.22), blurRadius: size * 0.22, offset: Offset(0, size * 0.07))],
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: const Color(0xFF071632), borderRadius: BorderRadius.circular(size * 0.18)),
+        child: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+      ),
+    );
+  }
 }
 
-class Dashboard extends StatelessWidget{
- const Dashboard({super.key,required this.state});final AppState state;
- Future<void>openFile(BuildContext context)async{
-  final files=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:const['pdf','docx','pptx','xlsx']);
-  if(!context.mounted||files.isEmpty)return;
-  final f=files.first;final bytes=await f.readAsBytes();if(!context.mounted)return;
-  final ext=(f.extension??'').toLowerCase();
-  Navigator.of(context).push(MaterialPageRoute(builder:(_)=>ext=='pdf'?PdfPage(bytes:bytes,name:f.name):OfficePage(bytes:bytes,name:f.name)));
- }
- @override Widget build(BuildContext context){
-  final t=(String k)=>L10n.text(state.locale,k);
-  return Scaffold(appBar:AppBar(title:const Text('Parin Office'),actions:[IconButton(onPressed:(){},icon:const Icon(Icons.search_rounded)),IconButton(onPressed:(){},icon:const Icon(Icons.notifications_none_rounded)),const Padding(padding:EdgeInsets.only(right:14),child:CircleAvatar(child:Icon(Icons.person_outline)))]),
-   body:CustomScrollView(slivers:[
-    SliverPadding(padding:const EdgeInsets.fromLTRB(22,24,22,12),sliver:SliverToBoxAdapter(child:Row(crossAxisAlignment:CrossAxisAlignment.end,children:[
-     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('Professional workspace',style:Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text('Write, calculate, present, annotate and publish.',style:Theme.of(context).textTheme.bodyLarge)])),
-     FilledButton.icon(onPressed:()=>openFile(context),icon:const Icon(Icons.add_rounded),label:Text(t('open')))]))),
-    SliverPadding(padding:const EdgeInsets.symmetric(horizontal:22),sliver:SliverGrid(delegate:SliverChildListDelegate([
-     _DocTile(t('pdf'),'Annotate • sign • search',Icons.picture_as_pdf_rounded,const Color(0xFFE64B5F),()=>openFile(context)),
-     _DocTile(t('word'),'Compose • format • review',Icons.article_rounded,const Color(0xFF2878D8),()=>openFile(context)),
-     _DocTile(t('powerpoint'),'Design • animate • present',Icons.slideshow_rounded,const Color(0xFFF57A22),()=>openFile(context)),
-     _DocTile(t('excel'),'Formula • chart • analyze',Icons.grid_on_rounded,const Color(0xFF159D6B),()=>openFile(context)),
-    ]),gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:400,mainAxisExtent:158,crossAxisSpacing:14,mainAxisSpacing:14))),
-    SliverPadding(padding:const EdgeInsets.fromLTRB(22,26,22,10),sliver:SliverToBoxAdapter(child:Text(t('quick'),style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)))),
-    SliverPadding(padding:const EdgeInsets.symmetric(horizontal:22),sliver:SliverToBoxAdapter(child:Wrap(spacing:10,runSpacing:10,children:const[
-     Chip(avatar:Icon(Icons.note_add_outlined,size:18),label:Text('New')),Chip(avatar:Icon(Icons.document_scanner_outlined,size:18),label:Text('Scan')),Chip(avatar:Icon(Icons.auto_awesome_outlined,size:18),label:Text('AI Assist')),Chip(avatar:Icon(Icons.compare_arrows_rounded,size:18),label:Text('Compare')),Chip(avatar:Icon(Icons.merge_type_rounded,size:18),label:Text('Merge / Split')),Chip(avatar:Icon(Icons.lock_outline,size:18),label:Text('Protect')),Chip(avatar:Icon(Icons.cloud_sync_outlined,size:18),label:Text('Sync'))]))),
-    SliverPadding(padding:const EdgeInsets.fromLTRB(22,26,22,35),sliver:SliverToBoxAdapter(child:Card(child:Padding(padding:const EdgeInsets.all(22),child:Wrap(spacing:38,runSpacing:20,children:const[
-     _Metric(Icons.devices_other_rounded,'Adaptive','Phone + Tablet'),_Metric(Icons.offline_bolt_outlined,'Offline-first','Local editing'),_Metric(Icons.palette_outlined,'Themes','128 presets'),_Metric(Icons.security_outlined,'Privacy','Local controls')
-    ]))))),
-   ]));
- }
+class Shell extends StatefulWidget {
+  const Shell({super.key, required this.state});
+  final AppState state;
+  @override
+  State<Shell> createState() => _ShellState();
 }
+
+class _ShellState extends State<Shell> {
+  int index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    String t(String key) => L10n.text(state.locale, key);
+    final items = <(IconData, String)>[
+      (Icons.space_dashboard_rounded, t('home')),
+      (Icons.history_rounded, t('recent')),
+      (Icons.grid_view_rounded, t('workspace')),
+      (Icons.tune_rounded, t('settings')),
+    ];
+    final pages = <Widget>[
+      Dashboard(state: state),
+      RecentPage(state: state),
+      WorkspaceHome(state: state),
+      SettingsPage(state: state),
+    ];
+
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth >= 760) {
+        final extended = constraints.maxWidth >= 1120;
+        return Scaffold(
+          body: Row(
+            children: [
+              Container(
+                width: extended ? 248 : 88,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(right: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+                ),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: extended ? 18 : 14, vertical: 24),
+                      child: Row(
+                        mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
+                        children: [
+                          const BrandMark(size: 44),
+                          if (extended) ...[
+                            const SizedBox(width: 12),
+                            const Expanded(child: Text('Parin Office', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.4))),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: NavigationRail(
+                        extended: extended,
+                        minWidth: 72,
+                        minExtendedWidth: 220,
+                        selectedIndex: index,
+                        onDestinationSelected: (value) => setState(() => index = value),
+                        labelType: extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                        destinations: items.map((item) => NavigationRailDestination(icon: Icon(item.$1), selectedIcon: Icon(item.$1), label: Text(item.$2))).toList(),
+                      ),
+                    ),
+                    if (extended)
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(18)),
+                          child: Row(children: [
+                            Icon(Icons.offline_bolt_rounded, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 9),
+                            Expanded(child: Text(t('onDevice'), style: const TextStyle(fontWeight: FontWeight.w700))),
+                          ]),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(child: pages[index]),
+            ],
+          ),
+        );
+      }
+      return Scaffold(
+        body: pages[index],
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (value) => setState(() => index = value),
+          destinations: items.map((item) => NavigationDestination(icon: Icon(item.$1), selectedIcon: Icon(item.$1), label: item.$2)).toList(),
+        ),
+      );
+    });
+  }
+}
+
+Future<void> launchCreate(BuildContext context, AppState state, {DocumentKind? initialKind}) async {
+  final selected = await showDialog<(DocumentKind, String)>(
+    context: context,
+    builder: (_) => _CreateDocumentDialog(state: state, initialKind: initialKind),
+  );
+  if (!context.mounted || selected == null) return;
+  final kind = selected.$1;
+  final title = selected.$2.trim().isEmpty ? 'Untitled' : selected.$2.trim();
+  try {
+    if (kind == DocumentKind.pdf) {
+      final bytes = await DocumentFactory.create(kind, title, DocumentFactory.initialContent(kind));
+      if (!context.mounted) return;
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PdfPage(bytes: bytes, name: title + '.pdf', state: state)));
+    } else {
+      Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => OfficeDocumentEditor(kind: kind, title: title, state: state, initialContent: DocumentFactory.initialContent(kind)),
+      ));
+    }
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not create file: ' + error.toString())));
+  }
+}
+
+Future<void> openRecentFile(BuildContext context, AppState state) async {
+  final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf', 'docx', 'pptx', 'xlsx']);
+  if (!context.mounted || files.isEmpty) return;
+  final file = files.first;
+  final bytes = await file.readAsBytes();
+  if (!context.mounted) return;
+  await state.markRecent(file.name);
+  final extension = (file.extension ?? '').toLowerCase();
+  if (extension == 'pdf') {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PdfPage(bytes: bytes, name: file.name, state: state)));
+    return;
+  }
+  final kind = switch (extension) {
+    'pptx' => DocumentKind.powerpoint,
+    'xlsx' => DocumentKind.excel,
+    _ => DocumentKind.word,
+  };
+  Navigator.of(context).push(MaterialPageRoute<void>(
+    builder: (_) => OfficeDocumentEditor(kind: kind, title: file.name, state: state, initialContent: DocumentFactory.initialContent(kind), importedFile: true),
+  ));
+}
+
+class _CreateDocumentDialog extends StatefulWidget {
+  const _CreateDocumentDialog({required this.state, this.initialKind});
+  final AppState state;
+  final DocumentKind? initialKind;
+  @override
+  State<_CreateDocumentDialog> createState() => _CreateDocumentDialogState();
+}
+
+class _CreateDocumentDialogState extends State<_CreateDocumentDialog> {
+  late DocumentKind selected;
+  late final TextEditingController titleController;
+
+  @override
+  void initState() {
+    super.initState();
+    selected = widget.initialKind ?? DocumentKind.word;
+    titleController = TextEditingController(text: 'Untitled');
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String t(String key) => L10n.text(widget.state.locale, key);
+    final options = <(DocumentKind, IconData, Color, String)>[
+      (DocumentKind.pdf, Icons.picture_as_pdf_rounded, const Color(0xFFE84E68), t('createPdf')),
+      (DocumentKind.word, Icons.description_rounded, const Color(0xFF3478E5), t('createWord')),
+      (DocumentKind.powerpoint, Icons.slideshow_rounded, const Color(0xFFEB8734), t('createPowerPoint')),
+      (DocumentKind.excel, Icons.grid_on_rounded, const Color(0xFF1A9E75), t('createExcel')),
+    ];
+    return AlertDialog(
+      title: Text(t('newDocument')),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleController, autofocus: true, decoration: InputDecoration(labelText: t('documentTitle'), prefixIcon: const Icon(Icons.edit_note_rounded))),
+              const SizedBox(height: 16),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: options.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, mainAxisExtent: 120),
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  final active = selected == option.$1;
+                  return Material(
+                    color: active ? option.$3.withValues(alpha: 0.12) : Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => setState(() => selected = option.$1),
+                      child: Container(
+                        padding: const EdgeInsets.all(13),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: active ? option.$3 : Theme.of(context).colorScheme.outlineVariant, width: active ? 2 : 1),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(option.$2, color: option.$3, size: 27),
+                            Text(option.$4, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(t('cancel'))),
+        FilledButton.icon(onPressed: () => Navigator.pop(context, (selected, titleController.text.trim())), icon: const Icon(Icons.add_rounded), label: Text(t('create'))),
+      ],
+    );
+  }
+}
+
+class Dashboard extends StatelessWidget {
+  const Dashboard({super.key, required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    String t(String key) => L10n.text(state.locale, key);
+    final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = width > 1180 ? 4 : width > 680 ? 2 : 1;
+    final docs = <(DocumentKind, String, String, IconData, Color)>[
+      (DocumentKind.pdf, t('pdf'), t('subtitlePdf'), Icons.picture_as_pdf_rounded, const Color(0xFFE84E68)),
+      (DocumentKind.word, t('word'), t('subtitleWord'), Icons.description_rounded, const Color(0xFF3478E5)),
+      (DocumentKind.powerpoint, t('powerpoint'), t('subtitlePowerPoint'), Icons.slideshow_rounded, const Color(0xFFEB8734)),
+      (DocumentKind.excel, t('excel'), t('subtitleExcel'), Icons.grid_on_rounded, const Color(0xFF1A9E75)),
+    ];
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(children: [const BrandMark(size: 34), const SizedBox(width: 10), const Text('Parin Office', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: -0.35))]),
+        actions: [
+          IconButton(tooltip: t('create'), onPressed: () => launchCreate(context, state), icon: const Icon(Icons.add_circle_outline_rounded)),
+          IconButton(tooltip: t('open'), onPressed: () => openRecentFile(context, state), icon: const Icon(Icons.folder_open_rounded)),
+          IconButton(
+            tooltip: t('blueFilter'),
+            onPressed: () => state.setFlag('blueLightFilter', !state.flag('blueLightFilter')),
+            icon: Icon(state.flag('blueLightFilter') ? Icons.wb_sunny_rounded : Icons.nightlight_round),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(width < 600 ? 15 : 25, 16, width < 600 ? 15 : 25, 18),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                padding: EdgeInsets.all(width < 600 ? 21 : 28),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [theme.colorScheme.primary, Color.lerp(theme.colorScheme.primary, theme.colorScheme.secondary, 0.55)!, const Color(0xFF142441)],
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(24)),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 7),
+                        Text('PARIN WORKSPACE', style: TextStyle(color: Colors.white, letterSpacing: 1.3, fontSize: 11, fontWeight: FontWeight.w900)),
+                      ]),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(t('welcome'), style: theme.textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: -0.7, height: 1.12)),
+                    const SizedBox(height: 10),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 620),
+                      child: Text(t('welcomeSubtitle'), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white.withValues(alpha: 0.84), height: 1.5)),
+                    ),
+                    const SizedBox(height: 18),
+                    Wrap(spacing: 10, runSpacing: 10, children: [
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF10203F)),
+                        onPressed: () => launchCreate(context, state),
+                        icon: const Icon(Icons.add_rounded),
+                        label: Text(t('create')),
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white.withValues(alpha: 0.55))),
+                        onPressed: () => openRecentFile(context, state),
+                        icon: const Icon(Icons.folder_open_rounded),
+                        label: Text(t('open')),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: width < 600 ? 15 : 25),
+            sliver: SliverToBoxAdapter(
+              child: Row(children: [
+                Expanded(child: Text(t('newDocument'), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+                Text('PDF · DOCX · PPTX · XLSX', style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+              ]),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(width < 600 ? 15 : 25, 13, width < 600 ? 15 : 25, 6),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final doc = docs[index];
+                return _DocTile(doc.$2, doc.$3, doc.$4, doc.$5, () => launchCreate(context, state, initialKind: doc.$1));
+              }, childCount: docs.length),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisExtent: columns == 1 ? 104 : 148,
+                crossAxisSpacing: 13,
+                mainAxisSpacing: 13,
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(width < 600 ? 15 : 25, 20, width < 600 ? 15 : 25, 10),
+            sliver: SliverToBoxAdapter(child: Text(t('quick'), style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900))),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: width < 600 ? 15 : 25),
+            sliver: SliverToBoxAdapter(
+              child: Wrap(
+                spacing: 9,
+                runSpacing: 9,
+                children: [
+                  ActionChip(avatar: const Icon(Icons.note_add_outlined, size: 18), label: Text(t('create')), onPressed: () => launchCreate(context, state)),
+                  ActionChip(avatar: const Icon(Icons.folder_open_rounded, size: 18), label: Text(t('open')), onPressed: () => openRecentFile(context, state)),
+                  ActionChip(avatar: const Icon(Icons.palette_outlined, size: 18), label: Text(t('themes')), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(state: state, openAppearance: true)))),
+                  ActionChip(avatar: const Icon(Icons.language_rounded, size: 18), label: Text(t('language')), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(state: state, openLanguage: true)))),
+                  ActionChip(avatar: const Icon(Icons.nightlight_round, size: 18), label: Text(t('blueFilter')), onPressed: () => state.setFlag('blueLightFilter', !state.flag('blueLightFilter'))),
+                  ActionChip(avatar: const Icon(Icons.history_rounded, size: 18), label: Text(t('recent')), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RecentPage(state: state)))),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(width < 600 ? 15 : 25, 21, width < 600 ? 15 : 25, 30),
+            sliver: SliverToBoxAdapter(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Wrap(
+                    spacing: 26,
+                    runSpacing: 18,
+                    children: const [
+                      _Metric(Icons.devices_other_rounded, 'Adaptive', 'Phone + Tablet'),
+                      _Metric(Icons.offline_bolt_outlined, 'Offline-first', 'Local file creation'),
+                      _Metric(Icons.palette_outlined, 'Personalization', '128 themes · 16 locales'),
+                      _Metric(Icons.security_outlined, 'Privacy', 'Local settings & drafts'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
 class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}
 

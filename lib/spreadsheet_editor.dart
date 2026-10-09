@@ -55,7 +55,7 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
 
   String _valueText(dynamic value) {
     if (value == null) return '';
-    if (value is xls.TextCellValue) return value.value;
+    if (value is xls.TextCellValue) return value.value.toPlainText();
     if (value is xls.IntCellValue) return value.value.toString();
     if (value is xls.DoubleCellValue) return value.value.toString();
     if (value is xls.BoolCellValue) return value.value.toString();
@@ -256,7 +256,7 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
           ]),
         ),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-          IconButton(tooltip: 'Bold selected cell', onPressed: () => _styleSelected(bold: !(_sheet.cell(_selectedIndex).cellStyle?.bold ?? false)), icon: const Icon(Icons.format_bold)),
+          IconButton(tooltip: 'Bold selected cell', onPressed: () => _styleSelected(bold: !(_sheet.cell(_selectedIndex).cellStyle?.isBold ?? false)), icon: const Icon(Icons.format_bold)),
           IconButton(tooltip: 'Highlight selected cell', onPressed: () => _styleSelected(fill: '#FFF2CC'), icon: const Icon(Icons.format_color_fill)),
           IconButton(tooltip: 'Header style', onPressed: () => _styleSelected(bold: true, fill: '#DCE8FF'), icon: const Icon(Icons.table_chart_outlined)),
           const SizedBox(width: 8),
@@ -289,7 +289,7 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
                               width: row == _row && col == _column ? 1.5 : 0.5),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text(_valueText(_sheet.cell(xls.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).value),
+                          child: Text(_sheet.cell(xls.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row)).displayText,
                             maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
                         ),
                         onTap: () => _select(row, col),

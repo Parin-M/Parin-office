@@ -35,6 +35,60 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
   String _progress = 'Opening document locally…';
 
   String get _extension => widget.fileName.split('.').last.toLowerCase();
+  bool get _isWord => _word != null;
+  bool get _isSheet => _sheet != null;
+  bool get _isSlides => _slides != null;
+  bool get _isWide => MediaQuery.sizeOf(context).width >= 820;
+
+  void _formatRun(String format, [String? value]) {
+    final word = _word;
+    if (word == null) return;
+    word.applyRunFormat((properties) {
+      switch (format) {
+        case 'bold':
+          properties.bold = !properties.bold;
+          break;
+        case 'italic':
+          properties.italic = !properties.italic;
+          break;
+        case 'underline':
+          properties.underline = properties.underline == WmlUnderline.single
+              ? WmlUnderline.none
+              : WmlUnderline.single;
+          break;
+        case 'strike':
+          properties.strike = !properties.strike;
+          break;
+        case 'font':
+          properties.asciiFont = value ?? 'Arial';
+          properties.csFont = value ?? 'Arial';
+          break;
+        case 'size':
+          properties.fontSizeHalfPoints = (int.tryParse(value ?? '') ?? 11) * 2;
+          break;
+        case 'color':
+          properties.color = value ?? '202124';
+          break;
+        case 'highlight':
+          properties.highlight = value;
+          break;
+      }
+    });
+  }
+
+  void _alignParagraph(String value) {
+    final word = _word;
+    if (word == null) return;
+    final alignment = switch (value) {
+      'center' => WmlJustification.center,
+      'right' => WmlJustification.right,
+      'justify' => WmlJustification.both,
+      _ => WmlJustification.left,
+    };
+    word.applyParagraphFormat((paragraph) {
+      paragraph.alignment = alignment;
+    });
+  }
 
   OfficeController? get _controller {
     if (_word != null) return _word;

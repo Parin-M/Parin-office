@@ -746,9 +746,9 @@ Future<void> launchCreate(BuildContext context, AppState state, {DocumentKind? i
 }
 
 Future<void> openRecentFile(BuildContext context, AppState state) async {
-  final files = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf', 'docx', 'pptx', 'xlsx']);
-  if (!context.mounted || files.isEmpty) return;
-  final file = files.first;
+  final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: const ['pdf', 'docx', 'pptx', 'xlsx']);
+  if (!context.mounted || picked == null || picked.files.isEmpty) return;
+  final file = picked.files.first;
   final bytes = await file.readAsBytes();
   if (!context.mounted) return;
   await state.markRecent(file.name);

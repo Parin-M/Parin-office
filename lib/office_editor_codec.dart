@@ -176,7 +176,13 @@ class OfficeEditorCodec {
   }
 
   static String _slideXml(PresentationSlideDraft slide,String accent,String nsA,String nsR,String nsP) {
-    final title=_textBox(id:2,name:'Title',x:914400,y:700000,cx:10363200,cy:1300000,text:slide.title,fontSize:3200,color:accent,bold:true);
+    final titleSize = slide.layout == 'Section header' ? 4200 : 3200;
+    final titleY = slide.layout == 'Section header' ? 1500000 : 700000;
+    final title = slide.layout == 'Blank' ? '' : _textBox(
+      id:2,name:'Title',x:914400,y:titleY,cx:10363200,cy:1300000,
+      text:slide.title,fontSize:titleSize,color:accent,bold:true,
+    );
+    final showBody = slide.layout != 'Blank' && slide.layout != 'Title only';
     final paragraphs=slide.body.split('\n').map((line) {
       final bullet=line.trimLeft().startsWith('• ')||line.trimLeft().startsWith('- ');
       final text=bullet?line.trimLeft().substring(2):line;
@@ -184,11 +190,17 @@ class OfficeEditorCodec {
       final indent=bullet?342900:0;
       return '<a:p><a:pPr marL="$indent">$marker</a:pPr><a:r><a:rPr lang="en-US" sz="2000"/><a:t xml:space="preserve">${xmlEscape(text)}</a:t></a:r><a:endParaRPr lang="en-US" sz="2000"/></a:p>';
     }).join();
-    final body=_rawTextBox(id:3,name:'Body',x:914400,y:2250000,cx:10363200,cy:4000000,paragraphs:paragraphs);
+    final body = showBody
+      ? _rawTextBox(
+          id:3,name:'Body',
+          x:914400,
+          y:slide.layout == 'Section header' ? 3400000 : 2250000,
+          cx:10363200,cy:4000000,paragraphs:paragraphs,
+        )
+      : '';
     final bg=_hexColor(slide.backgroundHex)??'FFFFFF';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="$nsA" xmlns:r="$nsR" xmlns:p="$nsP"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="$bg"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>$title$body</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>';
   }
-
   static String _textBox({required int id,required String name,required int x,required int y,required int cx,required int cy,required String text,required int fontSize,required String color,bool bold=false}) {
     final ps=text.split('\n').map((line)=>'<a:p><a:pPr algn="l"/><a:r><a:rPr lang="en-US" sz="$fontSize"${bold?' b="1"':''}><a:solidFill><a:srgbClr val="$color"/></a:solidFill></a:rPr><a:t xml:space="preserve">${xmlEscape(line)}</a:t></a:r><a:endParaRPr lang="en-US" sz="$fontSize"/></a:p>').join();
     return _rawTextBox(id:id,name:name,x:x,y:y,cx:cx,cy:cy,paragraphs:ps);

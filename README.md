@@ -14,6 +14,7 @@ Parin Office is an adaptive Android office workspace built with Flutter for phon
 - Local draft recovery, recent-document history, optional confirmation before recent-item removal, and opt-in haptics/animations.
 - PDF creation and the existing PDF editor integration.
 - **Embedded offline Office engine:** DOCX, XLSX, and PPTX are parsed, edited, laid out, and serialized on the device by the bundled Dart engine/editor packages. Editing does not call a document server, cloud conversion service, or login endpoint.
+- **Google Docs-inspired workspace:** document title and local-save status, File/Edit/View/Insert/Format/Tools menus, contextual formatting ribbon, page/ruler canvas, responsive side panel, and compact phone layout. The ribbon actions call the engine controller rather than acting as decorative mock controls.
 - **Word editor (DOCX):** paginated document canvas; text editing and formatting; tables and cell operations; pictures and other supported visuals; headers/footers; footnotes/endnotes; comments; hyperlinks; lists; equations; rulers; find/replace; undo/redo; print and PDF export.
 - **Excel editor (XLSX):** virtualized spreadsheet canvas; cell editing and formula bar; formula recalculation; number formats; merges; freeze panes; charts; drawings; data validation; filters and sorting; find/replace; undo/redo; print and PDF export. Legacy **XLS** files continue through the compatibility editor.
 - **PowerPoint editor (PPTX):** editable slide stage with move/resize/rotate handles; text, tables, pictures, charts and z-order; animations and slide transitions supported by the engine; presenter/slideshow controls; notes; undo/redo; print and PDF export.
@@ -32,6 +33,7 @@ The CI workflow uses Flutter 3.47, generates launcher image assets, creates Andr
 
 ```bash
 python3 tool/generate_launcher_assets.py
+python3 tool/test_launcher_assets.py
 flutter pub get
 dart run flutter_launcher_icons
 flutter analyze --no-fatal-infos

@@ -31,6 +31,9 @@ jobs:
       - name: Generate launcher image assets
         run: python3 tool/generate_launcher_assets.py
 
+      - name: Validate launcher icon layers
+        run: python3 tool/test_launcher_assets.py
+
       - name: Generate Android host
         run: flutter create --empty --platforms=android --org=com.parin.office .
 

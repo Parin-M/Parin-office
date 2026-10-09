@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:parin_office/document_factory.dart';
 import 'package:parin_office/main.dart';
 import 'package:parin_office/office_editor_codec.dart';
+import 'package:parin_office/pdf_tools_page.dart';
 import 'package:excel_plus/excel_plus.dart' as xls;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:quds_office_editor/quds_office_editor.dart';
@@ -178,6 +179,59 @@ void main() {
     final slides = SlideEditorController.fromBytes(slidesBytes);
     expect(await slides.saveBytesAsync(), isNotEmpty);
     slides.dispose();
+  });
+
+  test('PDF page-range parser handles discrete pages and ranges safely', () {
+    expect(PdfToolsEngine.parsePageRanges('1-3, 5, 7-8', 8), <int>[0, 1, 2, 4, 6, 7]);
+    expect(PdfToolsEngine.parsePageRanges('all', 3), <int>[0, 1, 2]);
+    expect(() => PdfToolsEngine.parsePageRanges('2-7', 6), throwsFormatException);
+    expect(() => PdfToolsEngine.parsePageRanges('0', 6), throwsFormatException);
+  });
+
+  test('PDF tools merge files and extract selected pages offline', () async {
+    final first = await OfficeDocumentFactory.create(
+      kind: OfficeKind.pdf,
+      title: 'First PDF',
+      body: 'First page text',
+      subtitle: '',
+    );
+    final second = await OfficeDocumentFactory.create(
+      kind: OfficeKind.pdf,
+      title: 'Second PDF',
+      body: 'Second page text',
+      subtitle: '',
+    );
+    final merged = await PdfToolsEngine.merge(<Uint8List>[first, second]);
+    expect(PdfToolsEngine.pageCount(merged), 2);
+    final extracted = await PdfToolsEngine.extractPages(merged, <int>[1]);
+    expect(PdfToolsEngine.pageCount(extracted), 1);
+  });
+
+  test('PDF conversion exports editable DOCX, XLSX, and PPTX packages from selectable text', () async {
+    final source = await OfficeDocumentFactory.create(
+      kind: OfficeKind.pdf,
+      title: 'Conversion source',
+      body: 'Product Name     Price\\nNotebook        12\\nPen             3',
+      subtitle: '',
+    );
+    final word = await PdfToolsEngine.convertToOffice(
+      bytes: source,
+      target: PdfOfficeTarget.word,
+      title: 'Source.pdf',
+    );
+    final sheet = await PdfToolsEngine.convertToOffice(
+      bytes: source,
+      target: PdfOfficeTarget.excel,
+      title: 'Source.pdf',
+    );
+    final slides = await PdfToolsEngine.convertToOffice(
+      bytes: source,
+      target: PdfOfficeTarget.powerpoint,
+      title: 'Source.pdf',
+    );
+    expect(ZipDecoder().decodeBytes(word).files.map((file) => file.name), contains('word/document.xml'));
+    expect(ZipDecoder().decodeBytes(sheet).files.map((file) => file.name), contains('xl/worksheets/sheet1.xml'));
+    expect(ZipDecoder().decodeBytes(slides).files.map((file) => file.name), contains('ppt/slides/slide1.xml'));
   });
 
   test('Create PDF returns a PDF document', () async {

@@ -33,6 +33,13 @@ class ThemeCatalog {
     final secondary=HSLColor.fromAHSL(1,(hue+18)%360,sat*0.78,(light+0.08).clamp(0.0,1.0)).toColor();
     return ThemePreset(name:families[f]+' '+(v+1).toString(),primary:primary,secondary:secondary,family:families[f]);
   });
+  static Color _onAccent(Color background){
+    const ink=Color(0xFF111522);
+    final luminance=background.computeLuminance();
+    final whiteContrast=1.05/(luminance+0.05);
+    final inkContrast=(luminance+0.05)/(ink.computeLuminance()+0.05);
+    return inkContrast>=whiteContrast?ink:Colors.white;
+  }
   static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false}){
     final dark=brightness==Brightness.dark;
     final source=HSLColor.fromColor(preset.primary);
@@ -56,9 +63,9 @@ class ThemeCatalog {
       contrastLevel:highContrast?1.0:0.12,
     ).copyWith(
       primary:primary,
-      onPrimary:dark?const Color(0xFF111522):Colors.white,
+      onPrimary:_onAccent(primary),
       secondary:secondary,
-      onSecondary:dark?const Color(0xFF111522):Colors.white,
+      onSecondary:_onAccent(secondary),
       surface:surface,
       surfaceContainerLowest:canvas,
       surfaceContainerLow:surface,
@@ -577,7 +584,7 @@ class Dashboard extends StatelessWidget {
                 ])
               ])),
             if(state.showWelcomePanel) const SizedBox(height:24),
-            if(state.showQuickActions) Row(children:[
+            Row(children:[
               Expanded(child:Text(t('newDoc'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
               Text('PDF · DOCX · PPTX · XLSX',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:0.5,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
             ]),

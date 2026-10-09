@@ -93,15 +93,16 @@ def paint_mark(canvas: bytearray, foreground: bool = False, monochrome: bool = F
     muted = (200, 211, 232, 255)
     mint = (98, 232, 211, 255)
     if foreground and monochrome:
-        # Material You recolors every opaque pixel to one tint. Draw only a
-        # recognizable, connected P-shaped mark on transparency—never a
-        # filled white page with details that disappear when tinted.
-        rounded_rect(canvas, 280, 230, 100, 540, 34, white)
-        rounded_rect(canvas, 330, 230, 410, 100, 34, white)
-        rounded_rect(canvas, 640, 290, 100, 225, 34, white)
-        rounded_rect(canvas, 330, 420, 360, 100, 34, white)
-        # Punch out the bowl of the P so the silhouette remains legible.
-        erase_rect(canvas, 390, 330, 250, 90)
+        # Android 13+ themed icons discard RGB and tint opaque pixels with the
+        # launcher palette. Use one thick, centered P glyph on transparency;
+        # do not reuse the colored "page" foreground for Material You.
+        # The complete symbol stays inside the adaptive icon's center safe area.
+        rounded_rect(canvas, 290, 220, 115, 580, 38, white)
+        rounded_rect(canvas, 340, 220, 385, 115, 38, white)
+        rounded_rect(canvas, 620, 255, 105, 255, 36, white)
+        rounded_rect(canvas, 355, 405, 370, 105, 34, white)
+        # Cut the bowl out of the P while keeping an opaque, single-color silhouette.
+        erase_rect(canvas, 405, 335, 215, 70)
         return
     if foreground:
         # Keep the full artwork within Android's centered 66% safe zone.

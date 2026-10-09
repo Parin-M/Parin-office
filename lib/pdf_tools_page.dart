@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
 import 'document_factory.dart';

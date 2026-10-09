@@ -1348,7 +1348,7 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Row(children: [
                 ChoiceChip(label: Text(t('allThemes')), selected: family == 'All', onSelected: (_) => setState(() => family = 'All')),
                 const SizedBox(width: 7),
-                ...ThemeCatalog.families.map((value) => Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(label: Text(value), selected: family == value, onSelected: (_) => setState(() => family = value))),
+                ...ThemeCatalog.families.map((value) => Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(label: Text(value), selected: family == value, onSelected: (_) => setState(() => family = value)))),
               ]),
             ),
             CheckboxListTile(

@@ -440,7 +440,7 @@ class Dashboard extends StatelessWidget {
                 ]),
                 const SizedBox(height:22),
                 Wrap(spacing:10,runSpacing:10,children:[
-                  FilledButton.icon(onPressed:_showCreate.bindContext(context),icon:const Icon(Icons.add_rounded),label:Text(t('create'))),
+                  FilledButton.icon(onPressed:()=>_showCreate(context),icon:const Icon(Icons.add_rounded),label:Text(t('create'))),
                   OutlinedButton.icon(onPressed:()=>openFile(context),icon:const Icon(Icons.file_open_rounded),label:Text(t('open')))
                 ])
               ])),
@@ -480,9 +480,6 @@ class Dashboard extends StatelessWidget {
   }
 }
 
-extension _CreateCallbackContext on void Function(BuildContext) {
-  VoidCallback bindContext(BuildContext context)=>()=>this(context);
-}
 
 class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
 class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}

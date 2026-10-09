@@ -2,112 +2,601 @@ import 'dart:typed_data';
 import 'package:dart_pdf_editor/dart_pdf_editor.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'document_factory.dart';
 
 void main(){WidgetsFlutterBinding.ensureInitialized();runApp(const ParinOfficeApp());}
 
 enum AppearanceMode{system,light,dark,amoled}
 
-class ThemePreset{
- const ThemePreset({required this.name,required this.primary,required this.secondary,required this.background});
- final String name;final Color primary,secondary,background;
+class ThemePreset {
+  const ThemePreset({required this.name, required this.family, required this.primary, required this.secondary});
+  final String name;
+  final String family;
+  final Color primary;
+  final Color secondary;
 }
 
-class ThemeCatalog{
- static final presets=List<ThemePreset>.generate(128,(i){
-  final hue=(i*137.508)%360;
-  return ThemePreset(
-   name:'Theme '+(i+1).toString(),
-   primary:HSVColor.fromAHSV(1,hue,.78,.95).toColor(),
-   secondary:HSVColor.fromAHSV(1,(hue+155)%360,.64,.86).toColor(),
-   background:HSVColor.fromAHSV(1,hue,.035,.985).toColor());
- });
- static ThemeData build(ThemePreset p,Brightness b,bool amoled){
-  final base=ColorScheme.fromSeed(seedColor:p.primary,brightness:b);
-  final scheme=base.copyWith(primary:p.primary,secondary:p.secondary,surface:amoled?Colors.black:base.surface);
-  return ThemeData(
-   useMaterial3:true,colorScheme:scheme,brightness:b,
-   scaffoldBackgroundColor:amoled?Colors.black:p.background,
-   appBarTheme:const AppBarTheme(centerTitle:false,scrolledUnderElevation:0),
-   cardTheme:CardThemeData(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.all(Radius.circular(22)))),
-   inputDecorationTheme:const InputDecorationTheme(border:OutlineInputBorder()),
-  );
- }
-}
+class ThemeCatalog {
+  static const families = <String>[
+    'Ocean', 'Indigo', 'Violet', 'Orchid', 'Rose', 'Coral', 'Amber', 'Lime',
+    'Emerald', 'Jade', 'Teal', 'Cyan', 'Sky', 'Slate', 'Graphite', 'Sand',
+  ];
+  static const _hues = <double>[
+    205, 231, 258, 282, 338, 8, 37, 75, 145, 164, 177, 190, 215, 222, 228, 36,
+  ];
 
-class AppState extends ChangeNotifier{
- Locale locale=const Locale('en');
- AppearanceMode mode=AppearanceMode.system;
- int themeIndex=11;
- bool autosave=true,animations=true,haptics=true,compactRibbon=false,diagnostics=false;
-
- Future<void>load()async{
-  final p=await SharedPreferences.getInstance();
-  final raw=p.getString('locale');
-  if(raw!=null){final parts=raw.split('-');locale=parts.length>1?Locale(parts[0],parts[1]):Locale(parts[0]);}
-  mode=AppearanceMode.values.firstWhere((x)=>x.name==p.getString('mode'),orElse:()=>AppearanceMode.system);
-  themeIndex=(p.getInt('theme')??11).clamp(0,127);
-  autosave=p.getBool('autosave')??true;
-  animations=p.getBool('animations')??true;
-  haptics=p.getBool('haptics')??true;
-  compactRibbon=p.getBool('compact')??false;
-  diagnostics=p.getBool('diagnostics')??false;
-  notifyListeners();
- }
- Future<void>setLocale(Locale v)async{locale=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('locale',v.toLanguageTag());}
- Future<void>setMode(AppearanceMode v)async{mode=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('mode',v.name);}
- Future<void>setTheme(int v)async{themeIndex=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setInt('theme',v);}
- Future<void>setFlag(String key,bool v)async{
-  if(key=='autosave')autosave=v;
-  if(key=='animations')animations=v;
-  if(key=='haptics')haptics=v;
-  if(key=='compact')compactRibbon=v;
-  if(key=='diagnostics')diagnostics=v;
-  notifyListeners();
-  final p=await SharedPreferences.getInstance();
-  await p.setBool(key,v);
- }
- Brightness get brightness{
-  switch(mode){
-   case AppearanceMode.system:return WidgetsBinding.instance.platformDispatcher.platformBrightness;
-   case AppearanceMode.light:return Brightness.light;
-   case AppearanceMode.dark:
-   case AppearanceMode.amoled:return Brightness.dark;
-  }
- }
- ThemePreset get preset=>ThemeCatalog.presets[themeIndex];
- bool get amoled=>mode==AppearanceMode.amoled;
-}
-
-class L10n{
- static const locales=[
-  Locale('fa'),Locale('en'),Locale('da'),Locale('de'),Locale('de','CH'),Locale('ar'),Locale('hi'),Locale('he'),
-  Locale('es'),Locale('it'),Locale('sv'),Locale('fi'),Locale('no'),Locale('is'),Locale('el'),Locale('tr')];
- static const names=['فارسی','English','Dansk','Deutsch','Schweizerdeutsch','العربية','हिन्दी','עברית','Español','Italiano','Svenska','Suomi','Norsk','Íslenska','Ελληνικά','Türkçe'];
- static String text(Locale l,String key){
-  const en={'home':'Home','recent':'Recent','workspace':'Workspace','settings':'Settings','open':'Open file','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'Quick actions','themes':'Themes','language':'Language','appearance':'Appearance','general':'General','editor':'Editor','security':'Privacy & security','performance':'Performance','accessibility':'Accessibility','light':'Light','dark':'Dark','amoled':'AMOLED','system':'System'};
-  const fa={'home':'خانه','recent':'اخیر','workspace':'Workspace','settings':'تنظیمات','open':'باز کردن فایل','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'عملیات سریع','themes':'تم‌ها','language':'زبان','appearance':'ظاهر','general':'عمومی','editor':'ویرایشگر','security':'حریم خصوصی و امنیت','performance':'کارایی','accessibility':'دسترسی‌پذیری','light':'روشن','dark':'تاریک','amoled':'AMOLED','system':'سیستم'};
-  const ar={'home':'الرئيسية','recent':'الأخيرة','workspace':'مساحة العمل','settings':'الإعدادات','open':'فتح ملف','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'إجراءات سريعة','themes':'السمات','language':'اللغة','appearance':'المظهر','general':'عام','editor':'المحرر','security':'الخصوصية والأمان','performance':'الأداء','accessibility':'إمكانية الوصول','light':'فاتح','dark':'داكن','amoled':'AMOLED','system':'النظام'};
-  return l.languageCode=='fa'?fa[key]??en[key]!:l.languageCode=='ar'?ar[key]??en[key]!:en[key]!;
- }
- static bool rtl(Locale l)=>l.languageCode=='fa'||l.languageCode=='ar'||l.languageCode=='he';
-}
-
-class ParinOfficeApp extends StatefulWidget{const ParinOfficeApp({super.key});@override State<ParinOfficeApp>createState()=>_ParinOfficeAppState();}
-class _ParinOfficeAppState extends State<ParinOfficeApp>{
- final state=AppState();bool ready=false;
- @override void initState(){super.initState();state.load().whenComplete(()=>setState(()=>ready=true));}
- @override void dispose(){state.dispose();super.dispose();}
- @override Widget build(BuildContext context){
-  if(!ready)return const MaterialApp(home:Scaffold(body:Center(child:CircularProgressIndicator())));
-  return AnimatedBuilder(animation:state,builder:(context,_){
-   return MaterialApp(
-    debugShowCheckedModeBanner:false,title:'Parin Office',locale:state.locale,supportedLocales:L10n.locales,
-    theme:ThemeCatalog.build(ThemeCatalog.presets[state.themeIndex],state.brightness,state.amoled),
-    builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,child:child!),
-    home:Shell(state:state));
+  static final presets = List<ThemePreset>.generate(128, (index) {
+    final familyIndex = index ~/ 8;
+    final variant = index % 8;
+    final hue = (_hues[familyIndex] + (variant - 3.5) * 2.3 + 360) % 360;
+    final saturation = 0.52 + (variant % 4) * 0.055;
+    final lightness = 0.35 + (variant % 3) * 0.035;
+    final primary = HSLColor.fromAHSL(1, hue, saturation, lightness).toColor();
+    final secondary = HSLColor.fromAHSL(
+      1, (hue + 27) % 360,
+      (saturation - 0.04).clamp(0.42, 0.76).toDouble(),
+      (lightness + 0.09).clamp(0.36, 0.62).toDouble(),
+    ).toColor();
+    return ThemePreset(
+      name: families[familyIndex] + ' ' + (variant + 1).toString(),
+      family: families[familyIndex],
+      primary: primary,
+      secondary: secondary,
+    );
   });
- }
+
+  static ThemeData build(ThemePreset preset, Brightness brightness, bool amoled, {bool highContrast = false}) {
+    final light = brightness == Brightness.light;
+    final background = light ? const Color(0xFFF5F7FB) : (amoled ? Colors.black : const Color(0xFF101319));
+    final surface = light ? Colors.white : (amoled ? Colors.black : const Color(0xFF171B23));
+    final surfaceLow = light ? const Color(0xFFEEF2F8) : (amoled ? const Color(0xFF050506) : const Color(0xFF1D222C));
+    final surfaceHigh = light ? const Color(0xFFE5EAF3) : (amoled ? const Color(0xFF0D0D10) : const Color(0xFF262C37));
+    final outline = highContrast
+        ? (light ? const Color(0xFF303745) : const Color(0xFFE4E8EF))
+        : (light ? const Color(0xFFD7DEEA) : const Color(0xFF343B48));
+    final seed = ColorScheme.fromSeed(seedColor: preset.primary, brightness: brightness);
+    final scheme = seed.copyWith(
+      primary: preset.primary,
+      onPrimary: Colors.white,
+      secondary: preset.secondary,
+      surface: surface,
+      surfaceContainerLowest: background,
+      surfaceContainerLow: surfaceLow,
+      surfaceContainer: surface,
+      surfaceContainerHigh: surfaceHigh,
+      surfaceContainerHighest: surfaceHigh,
+      outline: outline,
+      outlineVariant: outline,
+      onSurface: light ? const Color(0xFF182031) : const Color(0xFFF0F3F8),
+      onSurfaceVariant: light ? const Color(0xFF5E6879) : const Color(0xFFABB4C3),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: scheme,
+      brightness: brightness,
+      scaffoldBackgroundColor: background,
+      appBarTheme: AppBarTheme(centerTitle: false, scrolledUnderElevation: 0, backgroundColor: background, foregroundColor: scheme.onSurface),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+          side: BorderSide(color: outline.withValues(alpha: 0.55)),
+        ),
+      ),
+      dividerTheme: DividerThemeData(color: outline.withValues(alpha: 0.7), thickness: 1, space: 1),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceLow,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: outline)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: outline)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: preset.primary, width: 1.8)),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide(color: outline),
+        labelStyle: TextStyle(color: scheme.onSurface),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+}
+
+class AppState extends ChangeNotifier {
+  Locale locale = const Locale('en');
+  AppearanceMode mode = AppearanceMode.system;
+  int themeIndex = 9;
+  double blueStrength = 0.42;
+  double textScale = 1;
+  double defaultZoom = 1;
+  double editorFontSize = 16;
+  String themeQuery = '';
+  Set<int> favoriteThemes = <int>{};
+  List<String> recentDocuments = <String>[];
+
+  static const defaults = <String, bool>{
+    'autosave': true, 'animations': true, 'haptics': true, 'compactRibbon': false,
+    'confirmExport': false, 'showExtensions': true, 'smartPunctuation': true,
+    'spellAssist': true, 'showGridlines': true, 'showRulers': true,
+    'autoRecovery': true, 'reduceMotion': false, 'highContrast': false,
+    'lowMemoryMode': false, 'previewThumbnails': true, 'offlineOnly': true,
+    'diagnostics': false, 'restoreDrafts': true, 'protectSourceFiles': true,
+    'showStatusBar': true, 'blueLightFilter': false,
+  };
+  final Map<String, bool> _flags = Map<String, bool>.from(defaults);
+
+  bool flag(String key) => _flags[key] ?? false;
+  bool get autosave => flag('autosave');
+  bool get animations => flag('animations');
+  bool get haptics => flag('haptics');
+  bool get compactRibbon => flag('compactRibbon');
+  bool get diagnostics => flag('diagnostics');
+  ThemePreset get preset => ThemeCatalog.presets[themeIndex.clamp(0, 127).toInt()];
+  bool get amoled => mode == AppearanceMode.amoled;
+  Brightness get brightness {
+    switch (mode) {
+      case AppearanceMode.system:
+        return WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      case AppearanceMode.light:
+        return Brightness.light;
+      case AppearanceMode.dark:
+      case AppearanceMode.amoled:
+        return Brightness.dark;
+    }
+  }
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawLocale = prefs.getString('locale');
+    if (rawLocale != null) {
+      final exact = L10n.locales.where((item) => item.toLanguageTag().toLowerCase() == rawLocale.toLowerCase());
+      locale = exact.isNotEmpty
+          ? exact.first
+          : L10n.locales.firstWhere(
+              (item) => item.languageCode == rawLocale.split('-').first,
+              orElse: () => const Locale('en'),
+            );
+    }
+    mode = AppearanceMode.values.firstWhere((item) => item.name == prefs.getString('mode'), orElse: () => AppearanceMode.system);
+    themeIndex = (prefs.getInt('theme') ?? 9).clamp(0, 127).toInt();
+    blueStrength = (prefs.getDouble('blueStrength') ?? 0.42).clamp(0.0, 1.0).toDouble();
+    textScale = (prefs.getDouble('textScale') ?? 1).clamp(0.85, 1.4).toDouble();
+    defaultZoom = (prefs.getDouble('defaultZoom') ?? 1).clamp(0.5, 1.5).toDouble();
+    editorFontSize = (prefs.getDouble('editorFontSize') ?? 16).clamp(12.0, 26.0).toDouble();
+    favoriteThemes = (prefs.getStringList('favoriteThemes') ?? <String>[])
+        .map(int.tryParse).whereType<int>().where((index) => index >= 0 && index < 128).toSet();
+    recentDocuments = prefs.getStringList('recentDocuments') ?? <String>[];
+    for (final key in defaults.keys) {
+      final legacyKey = key == 'compactRibbon' ? 'compact' : key;
+      _flags[key] = prefs.getBool('settings.' + key) ?? prefs.getBool(legacyKey) ?? defaults[key]!;
+    }
+    notifyListeners();
+  }
+
+  Future<void> setLocale(Locale value) async {
+    locale = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('locale', value.toLanguageTag());
+  }
+
+  Future<void> setMode(AppearanceMode value) async {
+    mode = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('mode', value.name);
+  }
+
+  Future<void> setTheme(int value) async {
+    themeIndex = value.clamp(0, 127).toInt();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('theme', themeIndex);
+  }
+
+  Future<void> toggleFavoriteTheme(int index) async {
+    if (!favoriteThemes.add(index)) favoriteThemes.remove(index);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('favoriteThemes', favoriteThemes.map((item) => item.toString()).toList());
+  }
+
+  Future<void> setFlag(String key, bool value) async {
+    if (key == 'compact') key = 'compactRibbon';
+    _flags[key] = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('settings.' + key, value);
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> setNumeric(String key, double value) async {
+    switch (key) {
+      case 'blueStrength': blueStrength = value.clamp(0.0, 1.0).toDouble(); break;
+      case 'textScale': textScale = value.clamp(0.85, 1.4).toDouble(); break;
+      case 'defaultZoom': defaultZoom = value.clamp(0.5, 1.5).toDouble(); break;
+      case 'editorFontSize': editorFontSize = value.clamp(12.0, 26.0).toDouble(); break;
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(key, value);
+  }
+
+  Future<void> markRecent(String name) async {
+    final clean = name.trim();
+    if (clean.isEmpty) return;
+    recentDocuments.removeWhere((item) => item == clean);
+    recentDocuments.insert(0, clean);
+    if (recentDocuments.length > 40) recentDocuments = recentDocuments.take(40).toList();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('recentDocuments', recentDocuments);
+  }
+
+  Future<void> clearRecents() async {
+    recentDocuments.clear();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('recentDocuments');
+  }
+
+  Future<void> saveDraft(String name, String content) async {
+    if (!flag('autosave') || !flag('autoRecovery')) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('draft.' + name, content);
+  }
+
+  Future<String?> loadDraft(String name) async {
+    if (!flag('restoreDrafts')) return null;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('draft.' + name);
+  }
+
+  Future<void> clearDrafts() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in prefs.getKeys().where((item) => item.startsWith('draft.')).toList()) {
+      await prefs.remove(key);
+    }
+    notifyListeners();
+  }
+
+  void setThemeQuery(String value) {
+    themeQuery = value;
+    notifyListeners();
+  }
+}
+
+class L10n {
+  static const locales = <Locale>[
+    Locale('fa'), Locale('en'), Locale('da'), Locale('de'), Locale('de', 'CH'),
+    Locale('ar'), Locale('hi'), Locale('he'), Locale('es'), Locale('it'),
+    Locale('sv'), Locale('fi'), Locale('no'), Locale('is'), Locale('el'), Locale('tr'),
+  ];
+  static const names = <String>[
+    'فارسی', 'English', 'Dansk', 'Deutsch', 'Schweizerdeutsch', 'العربية',
+    'हिन्दी', 'עברית', 'Español', 'Italiano', 'Svenska', 'Suomi', 'Norsk', 'Íslenska', 'Ελληνικά', 'Türkçe',
+  ];
+
+  static const _en = <String, String>{
+    'home':'Home','recent':'Recent files','workspace':'Workspace','settings':'Settings',
+    'open':'Open file','create':'Create new','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel',
+    'quick':'Quick actions','themes':'Color themes','language':'Language','appearance':'Appearance',
+    'general':'General','editor':'Editor preferences','security':'Privacy & security','performance':'Performance',
+    'accessibility':'Accessibility','light':'Light','dark':'Dark','amoled':'AMOLED black','system':'System',
+    'search':'Search','newDocument':'New document','welcome':'Your work, beautifully organized.',
+    'welcomeSubtitle':'Create, edit and export documents from one calm workspace.',
+    'createPdf':'Create PDF','createWord':'Create Word file','createPowerPoint':'Create presentation','createExcel':'Create spreadsheet',
+    'documentTitle':'Document title','cancel':'Cancel','done':'Done','save':'Save / Export',
+    'noRecent':'No recent documents yet','clearRecent':'Clear recent documents','clearDrafts':'Clear saved drafts',
+    'blueFilter':'Blue-light filter','blueFilterSubtitle':'Optional warm tint for evening use','strength':'Filter strength',
+    'selectedTheme':'Selected theme','allThemes':'All themes','favorites':'Favorites',
+    'autosave':'Autosave local drafts','animations':'Animated transitions','haptics':'Haptic feedback',
+    'compactRibbon':'Compact editor toolbar','confirmExport':'Confirm before export','showExtensions':'Show file extensions',
+    'smartPunctuation':'Smart punctuation','spellAssist':'Writing assistance hints','showGridlines':'Spreadsheet gridlines',
+    'showRulers':'Editor rulers','autoRecovery':'Save recovery copy','reduceMotion':'Reduce motion',
+    'highContrast':'High contrast','lowMemoryMode':'Low-memory mode','previewThumbnails':'Show preview thumbnails',
+    'offlineOnly':'Prefer offline processing','diagnostics':'Show local diagnostics','restoreDrafts':'Restore saved drafts',
+    'protectSourceFiles':'Protect source files','showStatusBar':'Show editor status bar',
+    'textScale':'Interface text size','defaultZoom':'Default document zoom','fontSize':'Editor font size',
+    'generalSubtitle':'Saved settings that affect the workspace','recentSubtitle':'Continue where you left off',
+    'subtitlePdf':'Create a PDF and open it in PDF Studio','subtitleWord':'Edit text and export a DOCX file',
+    'subtitlePowerPoint':'Compose a slide and export a PPTX file','subtitleExcel':'Separate columns with tabs and rows with new lines',
+    'saveHint':'Your file is generated on this device.',
+    'existingFileNote':'Imported Office files are not fully parsed yet. Saving exports a new file from this editor text.',
+    'spreadsheetHint':'Tip: separate columns with a Tab; each new line becomes a row.',
+    'draftSaved':'Draft saved on this device','exported':'File exported','openFailed':'Could not open that file',
+    'onDevice':'On this device','about':'About Parin Office',
+    'aboutText':'PDF editing is integrated and DOCX/PPTX/XLSX creation is enabled. Full native editing for imported Office files is still under development.',
+  };
+  static const _fa = <String, String>{
+    'home':'خانه','recent':'فایل‌های اخیر','workspace':'فضای کار','settings':'تنظیمات','open':'باز کردن فایل','create':'ساخت فایل',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'عملیات سریع','themes':'تم‌های رنگی',
+    'language':'زبان','appearance':'ظاهر برنامه','general':'عمومی','editor':'تنظیمات ویرایشگر',
+    'security':'حریم خصوصی و امنیت','performance':'کارایی','accessibility':'دسترس‌پذیری','light':'روشن','dark':'تاریک',
+    'amoled':'مشکی AMOLED','system':'سیستم','search':'جستجو','newDocument':'سند جدید',
+    'welcome':'همه کارهایت، مرتب و حرفه‌ای.','welcomeSubtitle':'اسناد را در یک فضای کاری خلوت بساز، ویرایش و صادر کن.',
+    'createPdf':'ساخت PDF','createWord':'ساخت فایل Word','createPowerPoint':'ساخت ارائه','createExcel':'ساخت صفحه‌گسترده',
+    'documentTitle':'عنوان سند','cancel':'انصراف','done':'تأیید','save':'ذخیره / خروجی',
+    'noRecent':'هنوز سندی باز نشده است','clearRecent':'پاک کردن فایل‌های اخیر','clearDrafts':'پاک کردن پیش‌نویس‌ها',
+    'blueFilter':'فیلتر نور آبی','blueFilterSubtitle':'ته‌رنگ گرم و اختیاری برای شب','strength':'شدت فیلتر',
+    'selectedTheme':'تم انتخاب‌شده','allThemes':'همه تم‌ها','favorites':'علاقه‌مندی‌ها',
+    'autosave':'ذخیره خودکار پیش‌نویس','animations':'انیمیشن انتقال‌ها','haptics':'بازخورد لرزشی',
+    'compactRibbon':'نوار ابزار فشرده','confirmExport':'تأیید پیش از خروجی','showExtensions':'نمایش پسوند فایل',
+    'smartPunctuation':'نشانه‌گذاری هوشمند','spellAssist':'راهنمای نوشتار','showGridlines':'خطوط جدول اکسل',
+    'showRulers':'خط‌کش ویرایشگر','autoRecovery':'ذخیره نسخه بازیابی','reduceMotion':'کاهش حرکت و انیمیشن',
+    'highContrast':'کنتراست بالا','lowMemoryMode':'حالت حافظه کم','previewThumbnails':'نمایش پیش‌نمایش',
+    'offlineOnly':'پردازش ترجیحاً آفلاین','diagnostics':'نمایش اطلاعات فنی محلی','restoreDrafts':'بازیابی پیش‌نویس',
+    'protectSourceFiles':'محافظت از فایل اصلی','showStatusBar':'نمایش نوار وضعیت','textScale':'اندازه نوشته‌های رابط',
+    'defaultZoom':'بزرگ‌نمایی پیش‌فرض','fontSize':'اندازه متن ویرایشگر',
+    'generalSubtitle':'گزینه‌هایی که ذخیره می‌شوند و روی محیط کار اثر دارند','recentSubtitle':'ادامه از آخرین نقطه',
+    'subtitlePdf':'ساخت PDF و باز کردن در استودیوی PDF','subtitleWord':'ویرایش متن و خروجی DOCX',
+    'subtitlePowerPoint':'ساخت اسلاید و خروجی PPTX','subtitleExcel':'ستون‌ها با Tab و ردیف‌ها با خط جدید جدا می‌شوند',
+    'saveHint':'فایل روی همین دستگاه تولید می‌شود.',
+    'existingFileNote':'خواندن کامل فایل‌های آفیس واردشده هنوز فعال نیست؛ ذخیره، فایل تازه‌ای از متن این ویرایشگر می‌سازد.',
+    'spreadsheetHint':'نکته: ستون‌ها را با Tab جدا کن؛ هر خط یک ردیف است.','draftSaved':'پیش‌نویس روی دستگاه ذخیره شد',
+    'exported':'فایل صادر شد','openFailed':'باز کردن فایل ممکن نشد','onDevice':'روی دستگاه',
+    'about':'درباره Parin Office','aboutText':'ویرایش PDF یکپارچه است و ساخت DOCX/PPTX/XLSX فعال است؛ ویرایش کامل فایل‌های آفیس واردشده در حال توسعه است.',
+  };
+  static const _ar = <String, String>{
+    'home':'الرئيسية','recent':'الملفات الأخيرة','workspace':'مساحة العمل','settings':'الإعدادات','open':'فتح ملف','create':'إنشاء جديد',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'إجراءات سريعة','themes':'سمات الألوان',
+    'language':'اللغة','appearance':'المظهر','general':'عام','editor':'إعدادات المحرر','security':'الخصوصية والأمان',
+    'performance':'الأداء','accessibility':'إمكانية الوصول','light':'فاتح','dark':'داكن','amoled':'أسود AMOLED','system':'النظام',
+    'search':'بحث','newDocument':'مستند جديد','welcome':'عملك، منظم باحتراف.','welcomeSubtitle':'أنشئ المستندات وعدّلها وصدّرها من مساحة واحدة.',
+    'createPdf':'إنشاء PDF','createWord':'إنشاء ملف Word','createPowerPoint':'إنشاء عرض','createExcel':'إنشاء جدول بيانات',
+    'documentTitle':'عنوان المستند','cancel':'إلغاء','done':'تم','save':'حفظ / تصدير',
+    'noRecent':'لا توجد مستندات حديثة بعد','clearRecent':'مسح الملفات الأخيرة','clearDrafts':'مسح المسودات المحفوظة',
+    'blueFilter':'مرشح الضوء الأزرق','blueFilterSubtitle':'درجة دافئة اختيارية للمساء','strength':'قوة المرشح',
+    'selectedTheme':'السمة المحددة','allThemes':'كل السمات','favorites':'المفضلة',
+    'autosave':'حفظ المسودات تلقائياً','animations':'انتقالات متحركة','haptics':'الاهتزاز اللمسي',
+    'compactRibbon':'شريط أدوات مضغوط','confirmExport':'التأكيد قبل التصدير','showExtensions':'إظهار امتدادات الملفات',
+    'smartPunctuation':'ترقيم ذكي','spellAssist':'تلميحات الكتابة','showGridlines':'خطوط جدول البيانات',
+    'showRulers':'مساطر المحرر','autoRecovery':'حفظ نسخة للاسترداد','reduceMotion':'تقليل الحركة','highContrast':'تباين عالٍ',
+    'lowMemoryMode':'وضع ذاكرة منخفضة','previewThumbnails':'إظهار المعاينات','offlineOnly':'تفضيل المعالجة دون اتصال',
+    'diagnostics':'عرض معلومات التشخيص المحلية','restoreDrafts':'استعادة المسودات','protectSourceFiles':'حماية الملفات الأصلية',
+    'showStatusBar':'إظهار شريط الحالة','textScale':'حجم نص الواجهة','defaultZoom':'تكبير المستند الافتراضي','fontSize':'حجم خط المحرر',
+    'generalSubtitle':'إعدادات محفوظة تؤثر في مساحة العمل','recentSubtitle':'تابع من آخر نقطة',
+    'subtitlePdf':'أنشئ PDF وافتحه في استوديو PDF','subtitleWord':'حرّر النص وصدّره كملف DOCX',
+    'subtitlePowerPoint':'أنشئ شريحة وصدّرها كملف PPTX','subtitleExcel':'افصل الأعمدة بعلامة تبويب والصفوف بأسطر جديدة',
+    'saveHint':'يتم إنشاء الملف على هذا الجهاز.','existingFileNote':'قراءة ملفات Office المستوردة بالكامل قيد التطوير؛ الحفظ ينشئ ملفاً جديداً من نص المحرر.',
+    'spreadsheetHint':'نصيحة: Tab يفصل الأعمدة وكل سطر يمثل صفاً.','draftSaved':'تم حفظ المسودة على الجهاز','exported':'تم تصدير الملف',
+    'openFailed':'تعذر فتح الملف','onDevice':'على الجهاز','about':'حول Parin Office',
+    'aboutText':'تحرير PDF مدمج وإنشاء DOCX/PPTX/XLSX متاح؛ تحرير ملفات Office المستوردة بالكامل ما زال قيد التطوير.',
+  };
+  static const _de = <String, String>{
+    'home':'Startseite','recent':'Zuletzt verwendet','workspace':'Arbeitsbereich','settings':'Einstellungen','open':'Datei öffnen','create':'Neu erstellen',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'Schnellaktionen','themes':'Farbthemen',
+    'language':'Sprache','appearance':'Darstellung','general':'Allgemein','editor':'Editor-Einstellungen','security':'Datenschutz & Sicherheit',
+    'performance':'Leistung','accessibility':'Barrierefreiheit','light':'Hell','dark':'Dunkel','amoled':'AMOLED-Schwarz','system':'System',
+    'search':'Suchen','newDocument':'Neues Dokument','welcome':'Deine Arbeit. Klar organisiert.','welcomeSubtitle':'Dokumente an einem Ort erstellen, bearbeiten und exportieren.',
+    'createPdf':'PDF erstellen','createWord':'Word-Datei erstellen','createPowerPoint':'Präsentation erstellen','createExcel':'Tabelle erstellen',
+    'documentTitle':'Dokumenttitel','cancel':'Abbrechen','done':'Fertig','save':'Speichern / Exportieren',
+    'noRecent':'Noch keine aktuellen Dokumente','clearRecent':'Zuletzt verwendete Dateien löschen','clearDrafts':'Gespeicherte Entwürfe löschen',
+    'blueFilter':'Blaulichtfilter','blueFilterSubtitle':'Optionaler warmer Farbton am Abend','strength':'Filterstärke',
+    'selectedTheme':'Ausgewähltes Thema','allThemes':'Alle Themen','favorites':'Favoriten','autosave':'Entwürfe automatisch speichern',
+    'animations':'Animierte Übergänge','haptics':'Haptisches Feedback','compactRibbon':'Kompakte Symbolleiste',
+    'confirmExport':'Export bestätigen','showExtensions':'Dateiendungen anzeigen','smartPunctuation':'Intelligente Zeichensetzung',
+    'spellAssist':'Schreibhilfen','showGridlines':'Tabellenraster','showRulers':'Editor-Lineale','autoRecovery':'Wiederherstellungskopie speichern',
+    'reduceMotion':'Bewegung reduzieren','highContrast':'Hoher Kontrast','lowMemoryMode':'Speichersparmodus','previewThumbnails':'Vorschauen anzeigen',
+    'offlineOnly':'Offline-Verarbeitung bevorzugen','diagnostics':'Lokale Diagnose anzeigen','restoreDrafts':'Gespeicherte Entwürfe wiederherstellen',
+    'protectSourceFiles':'Quelldateien schützen','showStatusBar':'Statusleiste anzeigen','textScale':'Textgröße der Oberfläche',
+    'defaultZoom':'Standard-Zoom','fontSize':'Editor-Schriftgröße','generalSubtitle':'Gespeicherte Optionen für den Arbeitsbereich',
+    'recentSubtitle':'Dort weitermachen, wo du aufgehört hast','subtitlePdf':'PDF erstellen und im PDF-Studio öffnen',
+    'subtitleWord':'Text bearbeiten und als DOCX exportieren','subtitlePowerPoint':'Folie erstellen und als PPTX exportieren',
+    'subtitleExcel':'Spalten mit Tab, Zeilen mit Zeilenumbruch trennen','saveHint':'Die Datei wird auf diesem Gerät erstellt.',
+    'existingFileNote':'Das vollständige Einlesen importierter Office-Dateien ist noch in Arbeit; Speichern erstellt eine neue Datei aus dem Editor-Text.',
+    'spreadsheetHint':'Tipp: Tab trennt Spalten; jede neue Zeile ergibt eine Zeile.','draftSaved':'Entwurf lokal gespeichert',
+    'exported':'Datei exportiert','openFailed':'Datei konnte nicht geöffnet werden','onDevice':'Auf diesem Gerät',
+    'about':'Über Parin Office','aboutText':'PDF-Bearbeitung ist integriert, DOCX/PPTX/XLSX-Erstellung ist aktiv. Vollständige Bearbeitung importierter Office-Dateien ist in Arbeit.',
+  };
+  static const _es = <String, String>{
+    'home':'Inicio','recent':'Archivos recientes','workspace':'Espacio de trabajo','settings':'Ajustes','open':'Abrir archivo','create':'Crear nuevo',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'Acciones rápidas','themes':'Temas de color',
+    'language':'Idioma','appearance':'Apariencia','general':'General','editor':'Preferencias del editor','security':'Privacidad y seguridad',
+    'performance':'Rendimiento','accessibility':'Accesibilidad','light':'Claro','dark':'Oscuro','amoled':'Negro AMOLED','system':'Sistema',
+    'search':'Buscar','newDocument':'Documento nuevo','welcome':'Tu trabajo, bien organizado.','welcomeSubtitle':'Crea, edita y exporta documentos desde un solo espacio.',
+    'createPdf':'Crear PDF','createWord':'Crear archivo Word','createPowerPoint':'Crear presentación','createExcel':'Crear hoja de cálculo',
+    'documentTitle':'Título del documento','cancel':'Cancelar','done':'Listo','save':'Guardar / Exportar',
+    'noRecent':'Aún no hay documentos recientes','clearRecent':'Borrar archivos recientes','clearDrafts':'Borrar borradores guardados',
+    'blueFilter':'Filtro de luz azul','blueFilterSubtitle':'Tinte cálido opcional para la noche','strength':'Intensidad del filtro',
+    'selectedTheme':'Tema seleccionado','allThemes':'Todos los temas','favorites':'Favoritos','autosave':'Guardar borradores automáticamente',
+    'animations':'Transiciones animadas','haptics':'Respuesta háptica','compactRibbon':'Barra de herramientas compacta',
+    'confirmExport':'Confirmar antes de exportar','showExtensions':'Mostrar extensiones de archivo','smartPunctuation':'Puntuación inteligente',
+    'spellAssist':'Ayudas de escritura','showGridlines':'Cuadrícula de hoja de cálculo','showRulers':'Reglas del editor',
+    'autoRecovery':'Guardar copia de recuperación','reduceMotion':'Reducir movimiento','highContrast':'Alto contraste',
+    'lowMemoryMode':'Modo de poca memoria','previewThumbnails':'Mostrar vistas previas','offlineOnly':'Preferir procesamiento sin conexión',
+    'diagnostics':'Mostrar diagnóstico local','restoreDrafts':'Restaurar borradores guardados','protectSourceFiles':'Proteger archivos originales',
+    'showStatusBar':'Mostrar barra de estado','textScale':'Tamaño del texto de la interfaz','defaultZoom':'Zoom predeterminado',
+    'fontSize':'Tamaño de letra del editor','generalSubtitle':'Opciones guardadas del espacio de trabajo',
+    'recentSubtitle':'Continúa donde lo dejaste','subtitlePdf':'Crea un PDF y ábrelo en PDF Studio','subtitleWord':'Edita texto y expórtalo como DOCX',
+    'subtitlePowerPoint':'Crea una diapositiva y expórtala como PPTX','subtitleExcel':'Separa columnas con tabulaciones y filas con saltos de línea',
+    'saveHint':'El archivo se genera en este dispositivo.','existingFileNote':'La lectura completa de Office importado sigue en desarrollo; guardar crea un archivo nuevo a partir del texto del editor.',
+    'spreadsheetHint':'Consejo: Tab separa columnas; cada línea nueva crea una fila.','draftSaved':'Borrador guardado en este dispositivo',
+    'exported':'Archivo exportado','openFailed':'No se pudo abrir el archivo','onDevice':'En este dispositivo',
+    'about':'Acerca de Parin Office','aboutText':'La edición PDF está integrada y la creación DOCX/PPTX/XLSX está disponible. La edición nativa completa de Office importado sigue en desarrollo.',
+  };
+  static const _it = <String, String>{
+    'home':'Home','recent':'File recenti','workspace':'Area di lavoro','settings':'Impostazioni','open':'Apri file','create':'Crea nuovo',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'Azioni rapide','themes':'Temi colore',
+    'language':'Lingua','appearance':'Aspetto','general':'Generale','editor':'Preferenze editor','security':'Privacy e sicurezza',
+    'performance':'Prestazioni','accessibility':'Accessibilità','light':'Chiaro','dark':'Scuro','amoled':'Nero AMOLED','system':'Sistema',
+    'search':'Cerca','newDocument':'Nuovo documento','welcome':'Il tuo lavoro, ben organizzato.','welcomeSubtitle':'Crea, modifica ed esporta documenti da un unico spazio.',
+    'createPdf':'Crea PDF','createWord':'Crea file Word','createPowerPoint':'Crea presentazione','createExcel':'Crea foglio di calcolo',
+    'documentTitle':'Titolo documento','cancel':'Annulla','done':'Fatto','save':'Salva / Esporta',
+    'noRecent':'Nessun documento recente','clearRecent':'Cancella file recenti','clearDrafts':'Cancella bozze salvate',
+    'blueFilter':'Filtro luce blu','blueFilterSubtitle':'Tinta calda facoltativa per la sera','strength':'Intensità filtro',
+    'selectedTheme':'Tema selezionato','allThemes':'Tutti i temi','favorites':'Preferiti','autosave':'Salvataggio automatico bozze',
+    'animations':'Transizioni animate','haptics':'Feedback aptico','compactRibbon':'Barra strumenti compatta',
+    'confirmExport':'Conferma prima di esportare','showExtensions':'Mostra estensioni file','smartPunctuation':'Punteggiatura intelligente',
+    'spellAssist':'Suggerimenti di scrittura','showGridlines':'Griglia foglio di calcolo','showRulers':'Righelli editor',
+    'autoRecovery':'Salva copia di ripristino','reduceMotion':'Riduci movimento','highContrast':'Contrasto elevato',
+    'lowMemoryMode':'Modalità memoria ridotta','previewThumbnails':'Mostra anteprime','offlineOnly':'Preferisci elaborazione offline',
+    'diagnostics':'Mostra diagnostica locale','restoreDrafts':'Ripristina bozze salvate','protectSourceFiles':'Proteggi file originali',
+    'showStatusBar':'Mostra barra di stato','textScale':'Dimensione testo interfaccia','defaultZoom':'Zoom predefinito',
+    'fontSize':'Dimensione carattere editor','generalSubtitle':'Opzioni salvate dell’area di lavoro',
+    'recentSubtitle':'Riprendi da dove eri rimasto','subtitlePdf':'Crea un PDF e aprilo in PDF Studio','subtitleWord':'Modifica testo ed esporta in DOCX',
+    'subtitlePowerPoint':'Crea una diapositiva ed esporta in PPTX','subtitleExcel':'Separa colonne con Tab e righe con nuove righe',
+    'saveHint':'Il file viene generato su questo dispositivo.','existingFileNote':'La lettura completa dei file Office importati è in sviluppo; il salvataggio crea un nuovo file dal testo dell’editor.',
+    'spreadsheetHint':'Suggerimento: Tab separa le colonne; ogni nuova riga crea una riga.','draftSaved':'Bozza salvata sul dispositivo',
+    'exported':'File esportato','openFailed':'Impossibile aprire il file','onDevice':'Su questo dispositivo',
+    'about':'Informazioni su Parin Office','aboutText':'La modifica PDF è integrata e la creazione DOCX/PPTX/XLSX è disponibile; la modifica nativa completa dei file Office importati è in sviluppo.',
+  };
+  static const _tr = <String, String>{
+    'home':'Ana sayfa','recent':'Son dosyalar','workspace':'Çalışma alanı','settings':'Ayarlar','open':'Dosya aç','create':'Yeni oluştur',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'Hızlı işlemler','themes':'Renk temaları',
+    'language':'Dil','appearance':'Görünüm','general':'Genel','editor':'Düzenleyici tercihleri','security':'Gizlilik ve güvenlik',
+    'performance':'Performans','accessibility':'Erişilebilirlik','light':'Açık','dark':'Koyu','amoled':'AMOLED siyahı','system':'Sistem',
+    'search':'Ara','newDocument':'Yeni belge','welcome':'İşlerin düzenli ve profesyonel.','welcomeSubtitle':'Belgeleri tek bir çalışma alanında oluştur, düzenle ve dışa aktar.',
+    'createPdf':'PDF oluştur','createWord':'Word dosyası oluştur','createPowerPoint':'Sunum oluştur','createExcel':'E-tablo oluştur',
+    'documentTitle':'Belge başlığı','cancel':'İptal','done':'Tamam','save':'Kaydet / Dışa aktar',
+    'noRecent':'Henüz son belge yok','clearRecent':'Son dosyaları temizle','clearDrafts':'Kaydedilmiş taslakları temizle',
+    'blueFilter':'Mavi ışık filtresi','blueFilterSubtitle':'Akşam için isteğe bağlı sıcak ton','strength':'Filtre gücü',
+    'selectedTheme':'Seçili tema','allThemes':'Tüm temalar','favorites':'Favoriler',
+    'autosave':'Taslakları otomatik kaydet','animations':'Animasyonlu geçişler','haptics':'Dokunsal geri bildirim',
+    'compactRibbon':'Kompakt araç çubuğu','confirmExport':'Dışa aktarmadan önce onayla','showExtensions':'Dosya uzantılarını göster',
+    'smartPunctuation':'Akıllı noktalama','spellAssist':'Yazım yardımcıları','showGridlines':'Tablo kılavuz çizgileri',
+    'showRulers':'Düzenleyici cetvelleri','autoRecovery':'Kurtarma kopyasını kaydet','reduceMotion':'Hareketi azalt',
+    'highContrast':'Yüksek kontrast','lowMemoryMode':'Düşük bellek modu','previewThumbnails':'Önizlemeleri göster',
+    'offlineOnly':'Çevrimdışı işlemeyi tercih et','diagnostics':'Yerel tanılamayı göster','restoreDrafts':'Kaydedilmiş taslakları geri yükle',
+    'protectSourceFiles':'Kaynak dosyaları koru','showStatusBar':'Durum çubuğunu göster','textScale':'Arayüz metin boyutu',
+    'defaultZoom':'Varsayılan yakınlaştırma','fontSize':'Düzenleyici yazı boyutu','generalSubtitle':'Çalışma alanını etkileyen kayıtlı seçenekler',
+    'recentSubtitle':'Kaldığın yerden devam et','subtitlePdf':'PDF oluştur ve PDF Studio’da aç',
+    'subtitleWord':'Metni düzenle ve DOCX olarak dışa aktar','subtitlePowerPoint':'Slayt oluştur ve PPTX olarak dışa aktar',
+    'subtitleExcel':'Sütunları Tab, satırları yeni satırla ayır','saveHint':'Dosya bu cihazda oluşturulur.',
+    'existingFileNote':'İçe aktarılan Office dosyalarının tam okunması geliştirme aşamasında; kaydetme yeni dosya oluşturur.',
+    'spreadsheetHint':'İpucu: Tab sütunları ayırır; her yeni satır bir satır oluşturur.','draftSaved':'Taslak bu cihaza kaydedildi',
+    'exported':'Dosya dışa aktarıldı','openFailed':'Dosya açılamadı','onDevice':'Bu cihazda','about':'Parin Office hakkında',
+    'aboutText':'PDF düzenleme tümleşiktir; DOCX/PPTX/XLSX oluşturma etkin. İçe aktarılan Office dosyalarının tam düzenlemesi geliştiriliyor.',
+  };
+  static const _he = <String, String>{
+    'home':'בית','recent':'קבצים אחרונים','workspace':'סביבת עבודה','settings':'הגדרות','open':'פתיחת קובץ','create':'יצירה חדשה',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','quick':'פעולות מהירות','themes':'ערכות צבע',
+    'language':'שפה','appearance':'מראה','general':'כללי','editor':'העדפות העורך','security':'פרטיות ואבטחה','performance':'ביצועים',
+    'accessibility':'נגישות','light':'בהיר','dark':'כהה','amoled':'שחור AMOLED','system':'מערכת','search':'חיפוש',
+    'newDocument':'מסמך חדש','welcome':'העבודה שלך, מסודרת היטב.','welcomeSubtitle':'יצירה, עריכה וייצוא של מסמכים מסביבת עבודה אחת.',
+    'createPdf':'יצירת PDF','createWord':'יצירת קובץ Word','createPowerPoint':'יצירת מצגת','createExcel':'יצירת גיליון',
+    'documentTitle':'כותרת המסמך','cancel':'ביטול','done':'סיום','save':'שמירה / ייצוא','noRecent':'אין עדיין מסמכים אחרונים',
+    'clearRecent':'ניקוי קבצים אחרונים','clearDrafts':'ניקוי טיוטות שמורות','blueFilter':'מסנן אור כחול',
+    'blueFilterSubtitle':'גוון חם אופציונלי לשעות הערב','strength':'עוצמת המסנן','selectedTheme':'ערכת הצבע שנבחרה',
+    'allThemes':'כל הערכות','favorites':'מועדפים','autosave':'שמירה אוטומטית של טיוטות','animations':'מעברים מונפשים',
+    'haptics':'משוב הפטי','compactRibbon':'סרגל כלים קומפקטי','confirmExport':'אישור לפני ייצוא',
+    'showExtensions':'הצגת סיומות קבצים','smartPunctuation':'פיסוק חכם','spellAssist':'עזרי כתיבה',
+    'showGridlines':'קווי רשת בגיליון','showRulers':'סרגלים בעורך','autoRecovery':'שמירת עותק שחזור',
+    'reduceMotion':'הפחתת תנועה','highContrast':'ניגודיות גבוהה','lowMemoryMode':'מצב חסכוני בזיכרון',
+    'previewThumbnails':'הצגת תצוגות מקדימות','offlineOnly':'העדפת עיבוד לא מקוון','diagnostics':'הצגת אבחון מקומי',
+    'restoreDrafts':'שחזור טיוטות','protectSourceFiles':'הגנה על קובצי מקור','showStatusBar':'הצגת שורת מצב',
+    'textScale':'גודל טקסט בממשק','defaultZoom':'הגדלה ברירת מחדל','fontSize':'גודל גופן בעורך',
+    'generalSubtitle':'אפשרויות שמורות לסביבת העבודה','recentSubtitle':'המשך מהמקום שבו עצרת',
+    'subtitlePdf':'יצירת PDF ופתיחתו ב-PDF Studio','subtitleWord':'עריכת טקסט וייצוא לקובץ DOCX',
+    'subtitlePowerPoint':'יצירת שקופית וייצוא לקובץ PPTX','subtitleExcel':'הפרדת עמודות באמצעות Tab ושורות באמצעות ירידות שורה',
+    'saveHint':'הקובץ נוצר במכשיר זה.','existingFileNote':'קריאת קובצי Office מיובאים עדיין בפיתוח; שמירה יוצרת קובץ חדש.',
+    'spreadsheetHint':'טיפ: Tab מפריד עמודות; כל שורה חדשה יוצרת שורה.','draftSaved':'הטיוטה נשמרה במכשיר',
+    'exported':'הקובץ יוצא','openFailed':'לא ניתן לפתוח את הקובץ','onDevice':'במכשיר זה','about':'על Parin Office',
+    'aboutText':'עריכת PDF משולבת ויצירת DOCX/PPTX/XLSX זמינות; עריכה מלאה של Office מיובא עדיין בפיתוח.',
+  };
+  static const _extra = <String, Map<String, String>>{
+    'da': {'home':'Hjem','recent':'Seneste filer','workspace':'Arbejdsområde','settings':'Indstillinger','open':'Åbn fil','create':'Opret ny','appearance':'Udseende','themes':'Farvetemaer','language':'Sprog','general':'Generelt','blueFilter':'Blåt lys-filter','strength':'Filterstyrke','newDocument':'Nyt dokument','welcome':'Dit arbejde, godt organiseret.','createPdf':'Opret PDF','createWord':'Opret Word-fil','createPowerPoint':'Opret præsentation','createExcel':'Opret regneark','cancel':'Annuller','done':'Færdig','save':'Gem / Eksportér'},
+    'sv': {'home':'Hem','recent':'Senaste filer','workspace':'Arbetsyta','settings':'Inställningar','open':'Öppna fil','create':'Skapa nytt','appearance':'Utseende','themes':'Färgteman','language':'Språk','general':'Allmänt','blueFilter':'Blåljusfilter','strength':'Filterstyrka','newDocument':'Nytt dokument','welcome':'Ditt arbete, snyggt organiserat.','createPdf':'Skapa PDF','createWord':'Skapa Word-fil','createPowerPoint':'Skapa presentation','createExcel':'Skapa kalkylblad','cancel':'Avbryt','done':'Klart','save':'Spara / Exportera'},
+    'fi': {'home':'Etusivu','recent':'Viimeisimmät tiedostot','workspace':'Työtila','settings':'Asetukset','open':'Avaa tiedosto','create':'Luo uusi','appearance':'Ulkoasu','themes':'Väriteemat','language':'Kieli','general':'Yleiset','blueFilter':'Sinivalosuodatin','strength':'Suodattimen voimakkuus','newDocument':'Uusi asiakirja','welcome':'Työsi, selkeästi järjestetty.','createPdf':'Luo PDF','createWord':'Luo Word-tiedosto','createPowerPoint':'Luo esitys','createExcel':'Luo laskentataulukko','cancel':'Peruuta','done':'Valmis','save':'Tallenna / Vie'},
+    'no': {'home':'Hjem','recent':'Siste filer','workspace':'Arbeidsområde','settings':'Innstillinger','open':'Åpne fil','create':'Opprett ny','appearance':'Utseende','themes':'Fargetemaer','language':'Språk','general':'Generelt','blueFilter':'Blålysfilter','strength':'Filterstyrke','newDocument':'Nytt dokument','welcome':'Arbeidet ditt, ryddig organisert.','createPdf':'Opprett PDF','createWord':'Opprett Word-fil','createPowerPoint':'Opprett presentasjon','createExcel':'Opprett regneark','cancel':'Avbryt','done':'Ferdig','save':'Lagre / Eksporter'},
+    'is': {'home':'Heim','recent':'Nýlegar skrár','workspace':'Vinnusvæði','settings':'Stillingar','open':'Opna skrá','create':'Búa til nýtt','appearance':'Útlit','themes':'Litþemu','language':'Tungumál','general':'Almennt','blueFilter':'Bláljósasía','strength':'Styrkur síu','newDocument':'Nýtt skjal','welcome':'Vinnan þín, vel skipulögð.','createPdf':'Búa til PDF','createWord':'Búa til Word-skrá','createPowerPoint':'Búa til kynningu','createExcel':'Búa til töflureikni','cancel':'Hætta við','done':'Lokið','save':'Vista / Flytja út'},
+    'el': {'home':'Αρχική','recent':'Πρόσφατα αρχεία','workspace':'Χώρος εργασίας','settings':'Ρυθμίσεις','open':'Άνοιγμα αρχείου','create':'Δημιουργία νέου','appearance':'Εμφάνιση','themes':'Χρωματικά θέματα','language':'Γλώσσα','general':'Γενικά','blueFilter':'Φίλτρο μπλε φωτός','strength':'Ένταση φίλτρου','newDocument':'Νέο έγγραφο','welcome':'Η εργασία σου, οργανωμένη με σαφήνεια.','createPdf':'Δημιουργία PDF','createWord':'Δημιουργία αρχείου Word','createPowerPoint':'Δημιουργία παρουσίασης','createExcel':'Δημιουργία υπολογιστικού φύλλου','cancel':'Ακύρωση','done':'Έτοιμο','save':'Αποθήκευση / Εξαγωγή'},
+    'hi': {'home':'होम','recent':'हाल की फ़ाइलें','workspace':'कार्यस्थान','settings':'सेटिंग्स','open':'फ़ाइल खोलें','create':'नई फ़ाइल बनाएँ','appearance':'दिखावट','themes':'रंग थीम','language':'भाषा','general':'सामान्य','blueFilter':'ब्लू-लाइट फ़िल्टर','strength':'फ़िल्टर की तीव्रता','newDocument':'नया दस्तावेज़','welcome':'आपका काम, व्यवस्थित और पेशेवर।','createPdf':'PDF बनाएँ','createWord':'Word फ़ाइल बनाएँ','createPowerPoint':'प्रस्तुति बनाएँ','createExcel':'स्प्रेडशीट बनाएँ','cancel':'रद्द करें','done':'पूर्ण','save':'सहेजें / निर्यात'},
+  };
+  static String text(Locale locale, String key) {
+    final map = switch (locale.languageCode) {
+      'fa' => _fa, 'ar' => _ar, 'de' => _de, 'es' => _es, 'it' => _it, 'tr' => _tr, 'he' => _he, _ => _en,
+    };
+    return _extra[locale.languageCode]?[key] ?? map[key] ?? _en[key] ?? key;
+  }
+  static bool rtl(Locale locale) => const <String>{'fa','ar','he'}.contains(locale.languageCode);
+}
+
+class ParinOfficeApp extends StatefulWidget {
+  const ParinOfficeApp({super.key});
+  @override
+  State<ParinOfficeApp> createState() => _ParinOfficeAppState();
+}
+
+class _ParinOfficeAppState extends State<ParinOfficeApp> {
+  final state = AppState();
+  bool ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    state.load().whenComplete(() {
+      if (mounted) setState(() => ready = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    state.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!ready) return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
+    return AnimatedBuilder(
+      animation: state,
+      builder: (context, _) {
+        final noMotion = state.flag('reduceMotion') || !state.flag('animations');
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Parin Office',
+          locale: state.locale,
+          supportedLocales: L10n.locales,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          localeResolutionCallback: (deviceLocale, supported) {
+            if (deviceLocale == null) return const Locale('en');
+            return supported.firstWhere((item) => item.languageCode == deviceLocale.languageCode, orElse: () => const Locale('en'));
+          },
+          theme: ThemeCatalog.build(state.preset, Brightness.light, false, highContrast: state.flag('highContrast')),
+          darkTheme: ThemeCatalog.build(state.preset, Brightness.dark, state.amoled, highContrast: state.flag('highContrast')),
+          themeMode: switch (state.mode) {
+            AppearanceMode.system => ThemeMode.system,
+            AppearanceMode.light => ThemeMode.light,
+            AppearanceMode.dark || AppearanceMode.amoled => ThemeMode.dark,
+          },
+          themeAnimationDuration: noMotion ? Duration.zero : const Duration(milliseconds: 220),
+          builder: (context, child) {
+            final app = MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(state.textScale)),
+              child: Directionality(
+                textDirection: L10n.rtl(state.locale) ? TextDirection.rtl : TextDirection.ltr,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                app,
+                if (state.flag('blueLightFilter'))
+                  IgnorePointer(
+                    child: ColoredBox(color: const Color(0xFFFFB65C).withValues(alpha: state.blueStrength * 0.18)),
+                  ),
+              ],
+            );
+          },
+          home: Shell(state: state),
+        );
+      },
+    );
+  }
 }
 
 class Shell extends StatefulWidget{const Shell({super.key,required this.state});final AppState state;@override State<Shell>createState()=>_ShellState();}

@@ -187,13 +187,113 @@ class L10n {
   static const de=<String,String>{'home':'Start','recent':'Zuletzt','workspace':'Arbeitsbereich','settings':'Einstellungen','open':'Datei öffnen','create':'Neu erstellen','newDoc':'Neues Dokument','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Ein klarer Arbeitsbereich','welcomeSub':'Dokumente an einem Ort erstellen, ordnen und exportieren.','quick':'Schnellaktionen','appearance':'Darstellung','themes':'Farbthemen','language':'Sprache','mode':'Anzeigemodus','system':'System','light':'Hell','dark':'Dunkel','amoled':'AMOLED-Schwarz','general':'Allgemein','editor':'Editor','security':'Datenschutz & Sicherheit','performance':'Leistung','accessibility':'Barrierefreiheit','searchSettings':'Einstellungen suchen','blue':'Blaulichtfilter','blueSub':'Optionaler warmer Bildschirmton am Abend.','textScale':'Textgröße','blueStrength':'Wärmeintensität','reset':'Einstellungen zurücksetzen','export':'Einstellungen exportieren','cancel':'Abbrechen','docTitle':'Dokumenttitel','content':'Inhalt','subtitle':'Untertitel','save':'Erstellen und speichern','empty':'Ihre letzten Dokumente erscheinen hier.','noRecent':'Noch keine aktuellen Dokumente','clearRecent':'Liste leeren','autosave':'Entwürfe automatisch speichern','recovery':'Entwurfswiederherstellung','motion':'Bewegung und Übergänge','haptics':'Haptisches Feedback','compact':'Kompakte Symbolleisten','keepRecent':'Zuletzt verwendete Dokumente behalten','contrast':'Hoher Kontrast','spell':'Textvorschläge','grid':'Raster anzeigen','focus':'Fokus-Editor','safeSave':'Sicheres Speichern','diagnostics':'Anonyme Diagnose','resetQuestion':'App-Einstellungen auf Standard zurücksetzen?','paletteHint':'128 abgestimmte Paletten für Hell, Dunkel und AMOLED.','createFirst':'Erstes Dokument erstellen','search':'Suchen','restored':'Entwurf wiederhergestellt','saved':'Datei erfolgreich gespeichert','all':'Alle'};
   static const es=<String,String>{'home':'Inicio','recent':'Recientes','workspace':'Espacio de trabajo','settings':'Ajustes','open':'Abrir archivo','create':'Crear nuevo','newDoc':'Documento nuevo','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Un espacio más claro para trabajar','welcomeSub':'Crea, organiza y exporta tus documentos en un solo lugar.','quick':'Acciones rápidas','appearance':'Apariencia','themes':'Temas de color','language':'Idioma','mode':'Modo de pantalla','system':'Sistema','light':'Claro','dark':'Oscuro','amoled':'Negro AMOLED','general':'General','editor':'Editor','security':'Privacidad y seguridad','performance':'Rendimiento','accessibility':'Accesibilidad','searchSettings':'Buscar ajustes','blue':'Filtro de luz azul','blueSub':'Tinte cálido opcional para la noche.','textScale':'Tamaño del texto','blueStrength':'Intensidad del tono cálido','reset':'Restablecer ajustes','export':'Exportar ajustes','cancel':'Cancelar','docTitle':'Título del documento','content':'Contenido','subtitle':'Subtítulo','save':'Crear y guardar','empty':'Tus documentos recientes aparecerán aquí.','noRecent':'Todavía no hay documentos recientes','clearRecent':'Vaciar lista','autosave':'Guardar borradores automáticamente','recovery':'Recuperación de borradores','motion':'Movimiento y transiciones','haptics':'Respuesta háptica','compact':'Barras compactas','keepRecent':'Conservar documentos recientes','contrast':'Alto contraste','spell':'Sugerencias de texto','grid':'Mostrar cuadrícula','focus':'Editor de concentración','safeSave':'Guardado seguro','diagnostics':'Diagnóstico anónimo','resetQuestion':'¿Restablecer los ajustes de la aplicación?','paletteHint':'128 paletas coordinadas para los modos claro, oscuro y AMOLED.','createFirst':'Crea tu primer documento','search':'Buscar','restored':'Borrador recuperado','saved':'Archivo guardado correctamente','all':'Todos'};
   static const tr=<String,String>{'home':'Ana sayfa','recent':'Son kullanılanlar','workspace':'Çalışma alanı','settings':'Ayarlar','open':'Dosya aç','create':'Yeni oluştur','newDoc':'Yeni belge','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Daha düzenli bir çalışma alanı','welcomeSub':'Belgelerinizi tek yerden oluşturun, düzenleyin ve dışa aktarın.','quick':'Hızlı işlemler','appearance':'Görünüm','themes':'Renk temaları','language':'Dil','mode':'Görünüm modu','system':'Sistem','light':'Açık','dark':'Koyu','amoled':'AMOLED siyah','general':'Genel','editor':'Düzenleyici','security':'Gizlilik ve güvenlik','performance':'Performans','accessibility':'Erişilebilirlik','searchSettings':'Ayarları ara','blue':'Mavi ışık filtresi','blueSub':'Akşam çalışması için isteğe bağlı sıcak ton.','textScale':'Metin boyutu','blueStrength':'Sıcak ton yoğunluğu','reset':'Ayarları sıfırla','export':'Ayarları dışa aktar','cancel':'İptal','docTitle':'Belge başlığı','content':'İçerik','subtitle':'Alt başlık','save':'Oluştur ve kaydet','empty':'Son belgeleriniz burada görünecek.','noRecent':'Henüz son belge yok','clearRecent':'Son listeyi temizle','autosave':'Taslakları otomatik kaydet','recovery':'Taslak kurtarma','motion':'Hareket ve geçişler','haptics':'Dokunsal geri bildirim','compact':'Kompakt araç çubukları','keepRecent':'Son belgeleri sakla','contrast':'Yüksek kontrast','spell':'Metin önerileri','grid':'Izgarayı göster','focus':'Odak düzenleyicisi','safeSave':'Güvenli kaydetme','diagnostics':'Anonim tanılama','resetQuestion':'Uygulama tercihleri varsayılana sıfırlansın mı?','paletteHint':'Açık, koyu ve AMOLED için 128 renk paleti.','createFirst':'İlk belgenizi oluşturun','search':'Ara','restored':'Taslak kurtarıldı','saved':'Dosya başarıyla kaydedildi','all':'Tümü'};
+  static const da=<String,String>{
+    'home':'Hjem','recent':'Seneste','workspace':'Arbejdsområde','settings':'Indstillinger','open':'Åbn fil','create':'Opret ny','newDoc':'Nyt dokument',
+    'welcome':'Et roligt arbejdsområde til seriøst arbejde','welcomeSub':'Opret, organiser og eksporter dokumenter ét sted.','quick':'Hurtige handlinger',
+    'appearance':'Udseende','themes':'Farvetemaer','language':'Sprog','mode':'Visningstilstand','system':'System','light':'Lys','dark':'Mørk','amoled':'AMOLED-sort',
+    'general':'Generelt','editor':'Editor','security':'Privatliv og sikkerhed','performance':'Ydeevne','accessibility':'Tilgængelighed','searchSettings':'Søg i indstillinger',
+    'blue':'Blåt lys-filter','blueSub':'Valgfri varm skærmtone til aftenarbejde.','textScale':'Tekststørrelse','blueStrength':'Varm tone',
+    'reset':'Nulstil indstillinger','export':'Eksporter indstillinger','cancel':'Annuller','docTitle':'Dokumenttitel','content':'Indhold','subtitle':'Undertitel','save':'Opret og gem',
+    'empty':'Dine seneste dokumenter vises her.','noRecent':'Ingen seneste dokumenter','clearRecent':'Ryd listen','autosave':'Gem kladder automatisk',
+    'recovery':'Gendan kladder','motion':'Bevægelse og overgange','haptics':'Haptisk feedback','compact':'Kompakte værktøjslinjer',
+    'keepRecent':'Behold seneste dokumenter','contrast':'Høj kontrast','spell':'Tekstforslag','grid':'Vis gitter','focus':'Fokuseret editor',
+    'safeSave':'Sikrere lagring','diagnostics':'Anonym diagnosticering','resetQuestion':'Nulstil appens indstillinger?','paletteHint':'128 koordinerede farvepaletter til lys, mørk og AMOLED.','saved':'Filen blev gemt','all':'Alle'};
+  static const hi=<String,String>{
+    'home':'होम','recent':'हाल के दस्तावेज़','workspace':'कार्यस्थल','settings':'सेटिंग्स','open':'फ़ाइल खोलें','create':'नया बनाएँ','newDoc':'नया दस्तावेज़',
+    'welcome':'काम के लिए साफ़ और व्यवस्थित जगह','welcomeSub':'एक ही जगह पर दस्तावेज़ बनाएँ, व्यवस्थित करें और निर्यात करें।','quick':'त्वरित कार्रवाइयाँ',
+    'appearance':'दिखावट','themes':'रंग थीम','language':'भाषा','mode':'डिस्प्ले मोड','system':'सिस्टम','light':'लाइट','dark':'डार्क','amoled':'AMOLED ब्लैक',
+    'general':'सामान्य','editor':'एडिटर','security':'गोपनीयता और सुरक्षा','performance':'प्रदर्शन','accessibility':'सुलभता','searchSettings':'सेटिंग्स खोजें',
+    'blue':'ब्लू-लाइट फ़िल्टर','blueSub':'शाम के लिए वैकल्पिक गर्म स्क्रीन रंग।','textScale':'टेक्स्ट आकार','blueStrength':'गर्म रंग की तीव्रता',
+    'reset':'सेटिंग्स रीसेट करें','export':'सेटिंग्स निर्यात करें','cancel':'रद्द करें','docTitle':'दस्तावेज़ शीर्षक','content':'सामग्री','subtitle':'उपशीर्षक','save':'बनाएँ और सेव करें',
+    'empty':'हाल के दस्तावेज़ यहाँ दिखाई देंगे।','noRecent':'अभी कोई हाल का दस्तावेज़ नहीं','clearRecent':'सूची साफ़ करें','autosave':'ड्राफ़्ट स्वतः सेव करें',
+    'recovery':'ड्राफ़्ट रिकवरी','motion':'गतियाँ और ट्रांज़िशन','haptics':'हैप्टिक फ़ीडबैक','compact':'कॉम्पैक्ट टूलबार',
+    'keepRecent':'हाल के दस्तावेज़ रखें','contrast':'उच्च कॉन्ट्रास्ट','spell':'टेक्स्ट सुझाव','grid':'ग्रिड दिखाएँ','focus':'फ़ोकस एडिटर',
+    'safeSave':'सुरक्षित सेव','diagnostics':'अनाम डायग्नोस्टिक्स','resetQuestion':'ऐप सेटिंग्स को डिफ़ॉल्ट पर रीसेट करें?','paletteHint':'लाइट, डार्क और AMOLED के लिए 128 समन्वित रंग।','saved':'फ़ाइल सेव हुई','all':'सभी'};
+  static const he=<String,String>{
+    'home':'בית','recent':'אחרונים','workspace':'סביבת עבודה','settings':'הגדרות','open':'פתיחת קובץ','create':'יצירה חדשה','newDoc':'מסמך חדש',
+    'welcome':'סביבת עבודה נקייה ומאורגנת','welcomeSub':'יצירה, ארגון וייצוא של מסמכים במקום אחד.','quick':'פעולות מהירות',
+    'appearance':'מראה','themes':'ערכות צבע','language':'שפה','mode':'מצב תצוגה','system':'מערכת','light':'בהיר','dark':'כהה','amoled':'שחור AMOLED',
+    'general':'כללי','editor':'עורך','security':'פרטיות ואבטחה','performance':'ביצועים','accessibility':'נגישות','searchSettings':'חיפוש בהגדרות',
+    'blue':'מסנן אור כחול','blueSub':'גוון חם אופציונלי לעבודה בערב.','textScale':'גודל טקסט','blueStrength':'עוצמת הגוון החם',
+    'reset':'איפוס הגדרות','export':'ייצוא הגדרות','cancel':'ביטול','docTitle':'כותרת המסמך','content':'תוכן','subtitle':'כותרת משנה','save':'יצירה ושמירה',
+    'empty':'המסמכים האחרונים יוצגו כאן.','noRecent':'אין עדיין מסמכים אחרונים','clearRecent':'ניקוי הרשימה','autosave':'שמירה אוטומטית של טיוטות',
+    'recovery':'שחזור טיוטות','motion':'תנועה ומעברים','haptics':'משוב מישושי','compact':'סרגלי כלים קומפקטיים',
+    'keepRecent':'שמירת מסמכים אחרונים','contrast':'ניגודיות גבוהה','spell':'הצעות טקסט','grid':'הצגת רשת','focus':'עורך ממוקד',
+    'safeSave':'שמירה בטוחה','diagnostics':'אבחון אנונימי','resetQuestion':'לאפס את הגדרות האפליקציה?','paletteHint':'128 ערכות צבע מותאמות למצבים בהיר, כהה ו-AMOLED.','saved':'הקובץ נשמר','all':'הכול'};
+  static const it=<String,String>{
+    'home':'Home','recent':'Recenti','workspace':'Area di lavoro','settings':'Impostazioni','open':'Apri file','create':'Crea nuovo','newDoc':'Nuovo documento',
+    'welcome':'Uno spazio ordinato per lavorare','welcomeSub':'Crea, organizza ed esporta documenti da un unico posto.','quick':'Azioni rapide',
+    'appearance':'Aspetto','themes':'Temi colore','language':'Lingua','mode':'Modalità schermo','system':'Sistema','light':'Chiaro','dark':'Scuro','amoled':'Nero AMOLED',
+    'general':'Generale','editor':'Editor','security':'Privacy e sicurezza','performance':'Prestazioni','accessibility':'Accessibilità','searchSettings':'Cerca impostazioni',
+    'blue':'Filtro luce blu','blueSub':'Tinta calda opzionale per la sera.','textScale':'Dimensione testo','blueStrength':'Intensità tonalità calda',
+    'reset':'Reimposta impostazioni','export':'Esporta impostazioni','cancel':'Annulla','docTitle':'Titolo documento','content':'Contenuto','subtitle':'Sottotitolo','save':'Crea e salva',
+    'empty':'I documenti recenti appariranno qui.','noRecent':'Nessun documento recente','clearRecent':'Svuota elenco','autosave':'Salva automaticamente le bozze',
+    'recovery':'Recupero bozze','motion':'Movimento e transizioni','haptics':'Feedback aptico','compact':'Barre compatte',
+    'keepRecent':'Mantieni documenti recenti','contrast':'Contrasto elevato','spell':'Suggerimenti di testo','grid':'Mostra griglia','focus':'Editor concentrato',
+    'safeSave':'Salvataggio sicuro','diagnostics':'Diagnostica anonima','resetQuestion':'Ripristinare le impostazioni predefinite?','paletteHint':'128 palette coordinate per modalità chiara, scura e AMOLED.','saved':'File salvato','all':'Tutti'};
+  static const sv=<String,String>{
+    'home':'Hem','recent':'Senaste','workspace':'Arbetsyta','settings':'Inställningar','open':'Öppna fil','create':'Skapa nytt','newDoc':'Nytt dokument',
+    'welcome':'En lugnare arbetsyta för seriöst arbete','welcomeSub':'Skapa, organisera och exportera dokument på ett ställe.','quick':'Snabbåtgärder',
+    'appearance':'Utseende','themes':'Färgteman','language':'Språk','mode':'Visningsläge','system':'System','light':'Ljust','dark':'Mörkt','amoled':'AMOLED-svart',
+    'general':'Allmänt','editor':'Redigerare','security':'Integritet och säkerhet','performance':'Prestanda','accessibility':'Tillgänglighet','searchSettings':'Sök inställningar',
+    'blue':'Blåljusfilter','blueSub':'Valfri varm skärmton för kvällsarbete.','textScale':'Textstorlek','blueStrength':'Varm tonstyrka',
+    'reset':'Återställ inställningar','export':'Exportera inställningar','cancel':'Avbryt','docTitle':'Dokumenttitel','content':'Innehåll','subtitle':'Underrubrik','save':'Skapa och spara',
+    'empty':'Dina senaste dokument visas här.','noRecent':'Inga senaste dokument','clearRecent':'Rensa listan','autosave':'Spara utkast automatiskt',
+    'recovery':'Återställ utkast','motion':'Rörelse och övergångar','haptics':'Haptisk återkoppling','compact':'Kompakta verktygsfält',
+    'keepRecent':'Behåll senaste dokument','contrast':'Hög kontrast','spell':'Textförslag','grid':'Visa rutnät','focus':'Fokusredigerare',
+    'safeSave':'Säkrare sparning','diagnostics':'Anonym diagnostik','resetQuestion':'Återställa appinställningarna?','paletteHint':'128 samordnade paletter för ljust, mörkt och AMOLED.','saved':'Filen har sparats','all':'Alla'};
+  static const fi=<String,String>{
+    'home':'Koti','recent':'Viimeisimmät','workspace':'Työtila','settings':'Asetukset','open':'Avaa tiedosto','create':'Luo uusi','newDoc':'Uusi asiakirja',
+    'welcome':'Selkeä työtila tärkeille töille','welcomeSub':'Luo, järjestä ja vie asiakirjoja yhdessä paikassa.','quick':'Pikatoiminnot',
+    'appearance':'Ulkoasu','themes':'Väriteemat','language':'Kieli','mode':'Näyttötila','system':'Järjestelmä','light':'Vaalea','dark':'Tumma','amoled':'AMOLED-musta',
+    'general':'Yleinen','editor':'Muokkain','security':'Tietosuoja ja turvallisuus','performance':'Suorituskyky','accessibility':'Esteettömyys','searchSettings':'Hae asetuksista',
+    'blue':'Sinivalosuodatin','blueSub':'Valinnainen lämmin sävy iltakäyttöön.','textScale':'Tekstin koko','blueStrength':'Lämpimän sävyn voimakkuus',
+    'reset':'Palauta asetukset','export':'Vie asetukset','cancel':'Peruuta','docTitle':'Asiakirjan otsikko','content':'Sisältö','subtitle':'Alaotsikko','save':'Luo ja tallenna',
+    'empty':'Viimeisimmät asiakirjat näkyvät täällä.','noRecent':'Ei viimeaikaisia asiakirjoja','clearRecent':'Tyhjennä luettelo','autosave':'Tallenna luonnokset automaattisesti',
+    'recovery':'Palauta luonnokset','motion':'Liike ja siirtymät','haptics':'Kosketuspalaute','compact':'Kompaktit työkalurivit',
+    'keepRecent':'Säilytä viimeisimmät asiakirjat','contrast':'Suuri kontrasti','spell':'Tekstiehdotukset','grid':'Näytä ruudukko','focus':'Keskittyvä muokkain',
+    'safeSave':'Turvallisempi tallennus','diagnostics':'Anonyymi diagnostiikka','resetQuestion':'Palautetaanko oletusasetukset?','paletteHint':'128 yhteensopivaa palettia vaaleaan, tummaan ja AMOLED-tilaan.','saved':'Tiedosto tallennettu','all':'Kaikki'};
+  static const no=<String,String>{
+    'home':'Hjem','recent':'Nylige','workspace':'Arbeidsområde','settings':'Innstillinger','open':'Åpne fil','create':'Opprett ny','newDoc':'Nytt dokument',
+    'welcome':'En ryddig arbeidsflate for seriøst arbeid','welcomeSub':'Opprett, organiser og eksporter dokumenter på ett sted.','quick':'Hurtighandlinger',
+    'appearance':'Utseende','themes':'Fargetemaer','language':'Språk','mode':'Visningsmodus','system':'System','light':'Lys','dark':'Mørk','amoled':'AMOLED-svart',
+    'general':'Generelt','editor':'Redigerer','security':'Personvern og sikkerhet','performance':'Ytelse','accessibility':'Tilgjengelighet','searchSettings':'Søk i innstillinger',
+    'blue':'Blålysfilter','blueSub':'Valgfri varm skjermtone for kveldsarbeid.','textScale':'Tekststørrelse','blueStrength':'Varm tonestyrke',
+    'reset':'Tilbakestill innstillinger','export':'Eksporter innstillinger','cancel':'Avbryt','docTitle':'Dokumenttittel','content':'Innhold','subtitle':'Undertittel','save':'Opprett og lagre',
+    'empty':'Dine nylige dokumenter vises her.','noRecent':'Ingen nylige dokumenter','clearRecent':'Tøm listen','autosave':'Lagre utkast automatisk',
+    'recovery':'Gjenopprett utkast','motion':'Bevegelse og overganger','haptics':'Haptisk tilbakemelding','compact':'Kompakte verktøylinjer',
+    'keepRecent':'Behold nylige dokumenter','contrast':'Høy kontrast','spell':'Tekstforslag','grid':'Vis rutenett','focus':'Fokusredigerer',
+    'safeSave':'Tryggere lagring','diagnostics':'Anonym diagnostikk','resetQuestion':'Tilbakestille appinnstillingene?','paletteHint':'128 koordinerte paletter for lys, mørk og AMOLED.','saved':'Filen er lagret','all':'Alle'};
+  static const is=<String,String>{
+    'home':'Heim','recent':'Nýlegt','workspace':'Vinnusvæði','settings':'Stillingar','open':'Opna skrá','create':'Búa til nýtt','newDoc':'Nýtt skjal',
+    'welcome':'Skipulagt vinnusvæði fyrir mikilvæg verkefni','welcomeSub':'Búðu til, skipuleggðu og fluttu út skjöl á einum stað.','quick':'Flýtiaðgerðir',
+    'appearance':'Útlit','themes':'Litþemu','language':'Tungumál','mode':'Skjástilling','system':'Kerfi','light':'Ljóst','dark':'Dökkt','amoled':'AMOLED-svart',
+    'general':'Almennt','editor':'Ritill','security':'Persónuvernd og öryggi','performance':'Afköst','accessibility':'Aðgengi','searchSettings':'Leita í stillingum',
+    'blue':'Bláljósasía','blueSub':'Valfrjáls hlý litun fyrir kvöldvinnu.','textScale':'Textastærð','blueStrength':'Styrkur hlýja litarins',
+    'reset':'Endurstilla stillingar','export':'Flytja út stillingar','cancel':'Hætta við','docTitle':'Titill skjals','content':'Efni','subtitle':'Undirtitill','save':'Búa til og vista',
+    'empty':'Nýleg skjöl birtast hér.','noRecent':'Engin nýleg skjöl','clearRecent':'Hreinsa lista','autosave':'Vista drög sjálfvirkt',
+    'recovery':'Endurheimta drög','motion':'Hreyfing og umbreytingar','haptics':'Snertiviðbrögð','compact':'Þétt verkfæraspjöld',
+    'keepRecent':'Halda nýlegum skjölum','contrast':'Mikil birtuskil','spell':'Textatillögur','grid':'Sýna hnitanet','focus':'Einbeittur ritill',
+    'safeSave':'Öruggari vistun','diagnostics':'Nafnlaus greining','resetQuestion':'Endurstilla stillingar forritsins?','paletteHint':'128 samræmdir litir fyrir ljóst, dökkt og AMOLED.','saved':'Skrá vistuð','all':'Allt'};
+  static const el=<String,String>{
+    'home':'Αρχική','recent':'Πρόσφατα','workspace':'Χώρος εργασίας','settings':'Ρυθμίσεις','open':'Άνοιγμα αρχείου','create':'Δημιουργία νέου','newDoc':'Νέο έγγραφο',
+    'welcome':'Ένας καθαρός χώρος για σοβαρή εργασία','welcomeSub':'Δημιουργήστε, οργανώστε και εξαγάγετε έγγραφα σε ένα μέρος.','quick':'Γρήγορες ενέργειες',
+    'appearance':'Εμφάνιση','themes':'Χρωματικά θέματα','language':'Γλώσσα','mode':'Λειτουργία εμφάνισης','system':'Σύστημα','light':'Φωτεινό','dark':'Σκούρο','amoled':'AMOLED μαύρο',
+    'general':'Γενικά','editor':'Επεξεργαστής','security':'Απόρρητο και ασφάλεια','performance':'Απόδοση','accessibility':'Προσβασιμότητα','searchSettings':'Αναζήτηση ρυθμίσεων',
+    'blue':'Φίλτρο μπλε φωτός','blueSub':'Προαιρετική θερμή απόχρωση για βραδινή εργασία.','textScale':'Μέγεθος κειμένου','blueStrength':'Ένταση θερμής απόχρωσης',
+    'reset':'Επαναφορά ρυθμίσεων','export':'Εξαγωγή ρυθμίσεων','cancel':'Ακύρωση','docTitle':'Τίτλος εγγράφου','content':'Περιεχόμενο','subtitle':'Υπότιτλος','save':'Δημιουργία και αποθήκευση',
+    'empty':'Τα πρόσφατα έγγραφά σας θα εμφανίζονται εδώ.','noRecent':'Δεν υπάρχουν πρόσφατα έγγραφα','clearRecent':'Εκκαθάριση λίστας','autosave':'Αυτόματη αποθήκευση προσχεδίων',
+    'recovery':'Ανάκτηση προσχεδίων','motion':'Κίνηση και μεταβάσεις','haptics':'Απτική ανάδραση','compact':'Συμπαγείς γραμμές εργαλείων',
+    'keepRecent':'Διατήρηση πρόσφατων εγγράφων','contrast':'Υψηλή αντίθεση','spell':'Προτάσεις κειμένου','grid':'Εμφάνιση πλέγματος','focus':'Εστιασμένος επεξεργαστής',
+    'safeSave':'Ασφαλέστερη αποθήκευση','diagnostics':'Ανώνυμα διαγνωστικά','resetQuestion':'Επαναφορά προτιμήσεων εφαρμογής;','paletteHint':'128 συντονισμένες παλέτες για φωτεινή, σκοτεινή και AMOLED λειτουργία.','saved':'Το αρχείο αποθηκεύτηκε','all':'Όλα'};
+
   static String text(Locale locale,String key){
-    final table=switch(locale.languageCode){'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,_=>en};
+    final table=switch(locale.languageCode){
+      'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,'da'=>da,'hi'=>hi,'he'=>he,'it'=>it,'sv'=>sv,'fi'=>fi,'no'=>no,'is'=>is,'el'=>el,_=>en};
     return table[key]??en[key]??key;
   }
   static bool rtl(Locale l)=>const {'fa','ar','he'}.contains(l.languageCode);
-}
-class ParinOfficeApp extends StatefulWidget {
+}class ParinOfficeApp extends StatefulWidget {
   const ParinOfficeApp({super.key});
   @override State<ParinOfficeApp> createState()=>_ParinOfficeAppState();
 }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parin_office/document_factory.dart';
 import 'package:parin_office/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('Parin Office provides 128 named, categorized theme presets', () {
@@ -44,6 +45,29 @@ void main() {
     expect(L10n.rtl(const Locale('he')), isTrue);
     expect(L10n.rtl(const Locale('en')), isFalse);
     expect(L10n.text(const Locale('fa'), 'settings'), 'تنظیمات');
+  });
+
+  test('Dashboard and editor preferences persist and restore', () async {
+    SharedPreferences.setMockInitialValues({});
+    final first = AppState();
+    await first.load();
+    await first.setFlag('showWelcomePanel', false);
+    await first.setFlag('showQuickActions', false);
+    await first.setFlag('showDashboardMetrics', false);
+    await first.setFlag('confirmRecentRemoval', false);
+    await first.setEditorFontFamily('monospace');
+    await first.setLineSpacing(1.6);
+
+    final restored = AppState();
+    await restored.load();
+    expect(restored.showWelcomePanel, isFalse);
+    expect(restored.showQuickActions, isFalse);
+    expect(restored.showDashboardMetrics, isFalse);
+    expect(restored.confirmRecentRemoval, isFalse);
+    expect(restored.editorFontFamily, 'monospace');
+    expect(restored.lineSpacing, closeTo(1.6, 0.001));
+    first.dispose();
+    restored.dispose();
   });
 
   test('Create PDF returns a PDF document', () async {

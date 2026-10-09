@@ -11,16 +11,19 @@ import 'word_editor.dart';
 import 'spreadsheet_editor.dart';
 import 'presentation_editor.dart';
 import 'embedded_office_editor.dart';
+import 'font_library.dart';
 import 'help_center.dart';
 import 'pdf_security_tools.dart';
+import 'pdf_tools_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:quds_office_editor/quds_office_editor.dart' show OfficeHostFonts;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:printing/printing.dart';
 import 'document_factory.dart';
 
-Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); await OfficeHostFonts.ensureRegistered(); runApp(const ParinOfficeApp()); }
+Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); await OfficeHostFonts.ensureRegistered(); await UserFontLibrary.registerSavedFonts(); runApp(const ParinOfficeApp()); }
 
 enum AppearanceMode { system, light, liquidGlass, dark, amoled }
 
@@ -49,7 +52,7 @@ class ThemeCatalog {
     final inkContrast=(luminance+0.05)/(ink.computeLuminance()+0.05);
     return inkContrast>=whiteContrast?ink:Colors.white;
   }
-  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false,bool liquidGlass=false,bool metro=true}){
+  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false,bool liquidGlass=false,bool metro=true,bool animations=true}){
     final dark=brightness==Brightness.dark;
     final source=HSLColor.fromColor(preset.primary);
     final sourceSecondary=HSLColor.fromColor(preset.secondary);
@@ -90,6 +93,7 @@ class ThemeCatalog {
     );
     return ThemeData(
       useMaterial3:true,
+      pageTransitionsTheme:PageTransitionsTheme(builders:{for(final platform in TargetPlatform.values) platform:animations?const ZoomPageTransitionsBuilder():const _NoMotionPageTransitionsBuilder()}),
       visualDensity:compact?VisualDensity.compact:VisualDensity.standard,
       brightness:brightness,
       colorScheme:scheme,
@@ -456,8 +460,8 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
       localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate,FlutterQuillLocalizations.delegate],
       localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
-      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon,liquidGlass:state.mode==AppearanceMode.liquidGlass),
-      darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon),
+      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon,liquidGlass:state.mode==AppearanceMode.liquidGlass,animations:state.animations),
+      darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon,animations:state.animations),
       themeMode:state.mode==AppearanceMode.system?ThemeMode.system:(state.mode==AppearanceMode.dark||state.mode==AppearanceMode.amoled)?ThemeMode.dark:ThemeMode.light,
       builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
         child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
@@ -466,6 +470,19 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       home:Shell(state:state)));
   }
 }
+class _NoMotionPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _NoMotionPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) => child;
+}
+
 class BrandMark extends StatelessWidget{
   const BrandMark({super.key,this.size=42});final double size;
   @override Widget build(BuildContext context)=>Container(width:size,height:size,
@@ -752,14 +769,68 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
 
 class PdfPage extends StatelessWidget {
   const PdfPage({super.key, required this.bytes, required this.name});
-  final Uint8List bytes;final String name;
-  Future<void> save(Uint8List output) async {await FilePicker.saveFile(fileName:name,bytes:output,mimeType:'application/pdf',dialogTitle:'Save edited PDF');}
-  @override Widget build(BuildContext context)=>Scaffold(
-    appBar:AppBar(title:Text(name),actions:[
-      IconButton(tooltip:'PDF password and security tools',icon:const Icon(Icons.lock_outline_rounded),
-        onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>PdfSecurityToolsPage(bytes:bytes,fileName:name)))),
-      const SizedBox(width:5),
-    ]),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
+  final Uint8List bytes;
+  final String name;
+
+  Future<void> save(Uint8List output) async {
+    await FilePicker.saveFile(
+      fileName: name,
+      bytes: output,
+      mimeType: 'application/pdf',
+      dialogTitle: 'Save edited PDF',
+    );
+  }
+
+  Future<void> _print(BuildContext context) async {
+    try {
+      final completed = await Printing.layoutPdf(
+        name: name,
+        onLayout: (_) async => bytes,
+      );
+      if (!context.mounted) return;
+      if (!completed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The print dialog was closed without printing.')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open the system print dialog: $error')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(name, overflow: TextOverflow.ellipsis),
+      actions: [
+        IconButton(
+          tooltip: 'Print PDF',
+          icon: const Icon(Icons.print_outlined),
+          onPressed: () => _print(context),
+        ),
+        IconButton(
+          tooltip: 'PDF tools',
+          icon: const Icon(Icons.build_outlined),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => PdfToolsPage(bytes: bytes, fileName: name)),
+          ),
+        ),
+        IconButton(
+          tooltip: 'PDF password and security tools',
+          icon: const Icon(Icons.lock_outline_rounded),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => PdfSecurityToolsPage(bytes: bytes, fileName: name)),
+          ),
+        ),
+        const SizedBox(width: 5),
+      ],
+    ),
+    body: PdfEditorView(bytes: bytes, documentId: name, onSave: save, showSaveButton: true),
+  );
 }
 
 Widget officeEditorPage(Uint8List bytes,String name) {

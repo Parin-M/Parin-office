@@ -1,7 +1,7 @@
 name: parin_office
 description: Professional adaptive all-in-one office suite for Android phones and tablets.
 publish_to: "none"
-version: 0.9.0+90
+version: 0.10.0+100
 environment:
   sdk: ">=3.12.0 <4.0.0"
   flutter: "3.47.0"
@@ -15,12 +15,20 @@ dependencies:
   shared_preferences: ^2.5.6
   intl: ^0.20.3
   dart_pdf_editor: ^7.0.0
+  archive: ^4.0.7
+  pdf: ^3.11.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 flutter:
   uses-material-design: true
   assets:
     - assets/branding/
     - assets/templates/
+flutter_launcher_icons:
+  android: true
+  image_path: assets/branding/parin_icon.png
+  adaptive_icon_background: "#08132D"
+  adaptive_icon_foreground: assets/branding/parin_foreground.png

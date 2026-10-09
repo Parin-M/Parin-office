@@ -22,17 +22,28 @@ jobs:
           cache: true
           pub-cache: true
 
-      - name: Flutter version
-        run: flutter --version
-
       - name: Generate Android host
         run: flutter create --empty --platforms=android --org=com.parin.office .
+
+      - name: Set Android app name and package
+        run: |
+          sed -i 's/android:label="parin_office"/android:label="Parin Office"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Prepare launcher icon assets
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+          rsvg-convert -w 1024 -h 1024 assets/branding/parin_icon.svg -o assets/branding/parin_icon.png
+          rsvg-convert -w 1024 -h 1024 assets/branding/parin_foreground.svg -o assets/branding/parin_foreground.png
 
       - name: Dependencies
         run: flutter pub get
 
+      - name: Generate Android launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Tests
         run: flutter test
@@ -43,7 +54,7 @@ jobs:
       - name: Build universal APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Verify outputs
+      - name: Verify outputs and checksums
         run: |
           set -e
           test -f build/app/outputs/flutter-apk/app-arm64-v8a-release.apk

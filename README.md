@@ -6,12 +6,12 @@ Parin Office is an adaptive Android office workspace built with Flutter for phon
 
 - Adaptive navigation for phones, tablets and wider layouts.
 - An in-app Parin brand mark and generated Android launcher/adaptive icons.
-- 128 curated, named color palettes in Cool, Nature, Warm and Minimal groups.
-- Coordinated System, Light, Dark and true-black AMOLED display modes.
-- 16 selectable locales, built-in Flutter localization delegates, and RTL layout for Persian, Arabic and Hebrew.
-- Optional blue-light tint with an adjustable strength slider.
-- Searchable settings with persistent toggles, text scaling, high contrast, settings export and reset.
-- Locally stored draft recovery, recent-document history and opt-in haptics/animations.
+- 128 named color palettes with family filtering and instant preview; semantic color tokens normalize accents, controls and surfaces across Light, Dark and true-black AMOLED.
+- Adaptive phone/tablet navigation, branded in-app mark, and generated Android launcher/adaptive/monochrome icons.
+- 16 selectable locales, explicit RTL direction for Persian, Arabic and Hebrew, and initialized localized date formatting.
+- Optional blue-light warm overlay with persisted enable/disable and adjustable strength.
+- Searchable settings with persistent toggles, high contrast, text scale, editor font/line-spacing controls, dashboard personalization, settings export and reset.
+- Local draft recovery, recent-document history, optional confirmation before recent-item removal, and opt-in haptics/animations.
 - PDF creation and the existing PDF editor integration.
 - Starter DOCX, PPTX and XLSX creation using Open XML package parts; spreadsheet entries are created from comma-separated or tab-separated rows.
 

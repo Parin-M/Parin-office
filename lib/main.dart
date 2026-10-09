@@ -558,184 +558,175 @@ class SettingsPage extends StatefulWidget {
 }
 class _SettingsPageState extends State<SettingsPage> {
   final searchController=TextEditingController();
-  String themeCategory='All';
-  String themeQuery='';
+  String category='All',paletteSearch='';
   @override void dispose(){searchController.dispose();super.dispose();}
-  bool matches(String query,String title,String keywords)=>query.isEmpty||title.toLowerCase().contains(query.toLowerCase())||keywords.toLowerCase().contains(query.toLowerCase());
+  bool _matches(String q,String title,String tags)=>q.isEmpty||title.toLowerCase().contains(q.toLowerCase())||tags.toLowerCase().contains(q.toLowerCase());
 
   @override Widget build(BuildContext context){
-    final s=widget.state;final t=(String key)=>L10n.text(s.locale,key);final q=searchController.text;final theme=Theme.of(context);
-    final children=<Widget>[];
-    if(matches(q,t('appearance'),'themes palette light dark amoled'))children.add(_appearance(context,s,t));
-    if(matches(q,t('language'),'locale persian arabic hebrew rtl'))children.add(_language(context,s,t));
-    if(matches(q,t('general'),'autosave recovery animation haptics recent toolbar'))children.add(_general(context,s,t));
-    if(matches(q,t('editor'),'spell grid focus save'))children.add(_editor(context,s,t));
-    if(matches(q,t('security'),'privacy diagnostics local'))children.add(_security(context,s,t));
-    if(matches(q,t('accessibility'),'blue light filter text scale contrast'))children.add(_accessibility(context,s,t));
-    if(matches(q,t('performance'),'rendering responsiveness'))children.add(_performance(context,s,t));
-    return Scaffold(appBar:AppBar(title:Text(t('settings')),actions:[IconButton(tooltip:t('export'),onPressed:()=>_export(s,t),icon:const Icon(Icons.file_download_outlined)),const SizedBox(width:6)]),
+    final state=widget.state;final t=(String key)=>L10n.text(state.locale,key);final query=searchController.text;final theme=Theme.of(context);
+    final sections=<Widget>[];
+    if(_matches(query,t('appearance'),'palette themes light dark amoled colors'))sections.add(_appearance(context,state,t));
+    if(_matches(query,t('language'),'locale rtl persian arabic hebrew'))sections.add(_language(context,state,t));
+    if(_matches(query,t('general'),'autosave recovery animations haptics recent toolbar'))sections.add(_general(context,state,t));
+    if(_matches(query,t('editor'),'spell grid focus safe save'))sections.add(_editor(context,state,t));
+    if(_matches(query,t('security'),'privacy diagnostics local'))sections.add(_security(context,state,t));
+    if(_matches(query,t('accessibility'),'blue light filter text scale contrast'))sections.add(_accessibility(context,state,t));
+    if(_matches(query,t('performance'),'responsive mode surfaces rendering'))sections.add(_performance(context,state,t));
+    return Scaffold(appBar:AppBar(title:Text(t('settings')),actions:[
+      IconButton(tooltip:t('export'),onPressed:()=>_export(state,t),icon:const Icon(Icons.file_download_outlined)),const SizedBox(width:5)]),
       body:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,32),children:[
-        Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?32:16),borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.primary.withAlpha(50))),
+        Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(
+          color:theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?32:16),
+          borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.primary.withAlpha(48))),
           child:Row(children:[const BrandMark(size:46),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            Text(t('appearance'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:4),
-            Text(t('paletteHint'),style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.4))]))])),
+            Text(t('appearance'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
+            const SizedBox(height:4),Text(t('paletteHint'),style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.4))]))])),
         const SizedBox(height:14),
-        TextField(controller:searchController,onChanged:(_)=>setState((){}),decoration:InputDecoration(hintText:t('searchSettings'),prefixIcon:const Icon(Icons.search_rounded),
-          suffixIcon:q.isEmpty?null:IconButton(onPressed:(){searchController.clear();setState((){});},icon:const Icon(Icons.close_rounded)))),
+        TextField(controller:searchController,onChanged:(_)=>setState((){}),decoration:InputDecoration(
+          hintText:t('searchSettings'),prefixIcon:const Icon(Icons.search_rounded),
+          suffixIcon:query.isEmpty?null:IconButton(onPressed:(){searchController.clear();setState((){});},icon:const Icon(Icons.close_rounded)))),
         const SizedBox(height:14),
-        if(children.isEmpty)Padding(padding:const EdgeInsets.all(24),child:Text('No settings match "$q".',textAlign:TextAlign.center))
-        else for(final child in children)Padding(padding:const EdgeInsets.only(bottom:12),child:child),
-        OutlinedButton.icon(onPressed:()=>_reset(s,t),icon:const Icon(Icons.restart_alt_rounded),label:Text(t('reset'))),
-        const SizedBox(height:12),
-        Text('Parin Office • Preferences are saved on this device.',textAlign:TextAlign.center,style:theme.textTheme.labelSmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))
+        if(sections.isEmpty)Padding(padding:const EdgeInsets.all(24),child:Text('No settings match "'+query+'".',textAlign:TextAlign.center))
+        else for(final sectionWidget in sections)Padding(padding:const EdgeInsets.only(bottom:12),child:sectionWidget),
+        OutlinedButton.icon(onPressed:()=>_reset(state,t),icon:const Icon(Icons.restart_alt_rounded),label:Text(t('reset'))),
+        const SizedBox(height:12),Text('Parin Office • Settings save on this device.',textAlign:TextAlign.center,
+          style:theme.textTheme.labelSmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))
       ]));
   }
 
-  Widget section(String title,String subtitle,IconData icon,List<Widget> children)=>Card(clipBehavior:Clip.antiAlias,child:Theme(
-    data:Theme.of(context).copyWith(dividerColor:Colors.transparent),child:ExpansionTile(
+  Widget _section(String title,String subtitle,IconData icon,List<Widget> children)=>Card(clipBehavior:Clip.antiAlias,
+    child:Theme(data:Theme.of(context).copyWith(dividerColor:Colors.transparent),child:ExpansionTile(
       initiallyExpanded:true,tilePadding:const EdgeInsets.symmetric(horizontal:15,vertical:3),childrenPadding:const EdgeInsets.fromLTRB(12,0,12,14),
-      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(13)),child:Icon(icon,color:Theme.of(context).colorScheme.primary)),
+      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(13)),
+        child:Icon(icon,color:Theme.of(context).colorScheme.primary)),
       title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis),children:children)));
-  Widget switchRow(AppState s,String key,String title,String subtitle,{IconData? icon})=>SwitchListTile(
-    value:s.flag(key),onChanged:(v)=>s.setFlag(key,v),contentPadding:const EdgeInsets.symmetric(horizontal:6),
+
+  Widget _switchRow(AppState state,String key,String title,String subtitle,{IconData? icon})=>SwitchListTile(
+    value:state.flag(key),onChanged:(value)=>state.setFlag(key,value),contentPadding:const EdgeInsets.symmetric(horizontal:6),
     secondary:icon==null?null:Icon(icon),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w700)),subtitle:Text(subtitle));
 
-  Widget _appearance(BuildContext context,AppState s,String Function(String) t){
+  Widget _appearance(BuildContext context,AppState state,String Function(String) t){
     final theme=Theme.of(context);
-    final modes=< (AppearanceMode,String,IconData)>[
-      (AppearanceMode.system,t('system'),Icons.settings_brightness_rounded),(AppearanceMode.light,t('light'),Icons.light_mode_outlined),
-      (AppearanceMode.dark,t('dark'),Icons.dark_mode_outlined),(AppearanceMode.amoled,t('amoled'),Icons.contrast_rounded)];
-    final choices=ThemeCatalog.presets.where((p){
-      final category=switch(themeCategory){
+    final modes=<(AppearanceMode,String,IconData)>[
+      (AppearanceMode.system,t('system'),Icons.settings_brightness_rounded),
+      (AppearanceMode.light,t('light'),Icons.light_mode_outlined),
+      (AppearanceMode.dark,t('dark'),Icons.dark_mode_outlined),
+      (AppearanceMode.amoled,t('amoled'),Icons.contrast_rounded)];
+    final presets=ThemeCatalog.presets.where((p){
+      final include=switch(category){
         'Cool'=>const ['Ocean','Arctic','Indigo','Midnight','Violet'].contains(p.family),
         'Nature'=>const ['Mint','Forest','Sage','Lime'].contains(p.family),
         'Warm'=>const ['Sunset','Coral','Rose','Sand'].contains(p.family),
-        'Minimal'=>const ['Mono','Stone'].contains(p.family),_=>true};
-      return category&&(themeQuery.isEmpty||p.name.toLowerCase().contains(themeQuery.toLowerCase())||p.family.toLowerCase().contains(themeQuery.toLowerCase()));
+        'Minimal'=>const ['Mono','Stone'].contains(p.family),
+        _=>true};
+      return include&&(paletteSearch.isEmpty||p.name.toLowerCase().contains(paletteSearch.toLowerCase())||p.family.toLowerCase().contains(paletteSearch.toLowerCase()));
     }).toList();
-    return section(t('appearance'),'128 coordinated palettes • immediate preview',Icons.palette_outlined,[
-      Padding(padding:const EdgeInsets.fromLTRB(4,7,4,7),child:SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:modes.map((m)=>Padding(
-        padding:const EdgeInsetsDirectional.only(end:7),child:ChoiceChip(avatar:Icon(m.$3,size:17),label:Text(m.$2),selected:s.mode==m.$1,onSelected:(_)=>s.setMode(m.$1)))).toList()))),
-      Padding(padding:const EdgeInsets.symmetric(horizontal:4,vertical:5),child:Text(t('paletteHint'),style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))),
-      TextField(onChanged:(v)=>setState(()=>themeQuery=v),decoration:const InputDecoration(prefixIcon:Icon(Icons.search_rounded),hintText:'Find a palette (Ocean 3, Rose, Mono...)')),
+    return _section(t('appearance'),'128 coordinated palettes • preview instantly',Icons.palette_outlined,[
+      Padding(padding:const EdgeInsets.fromLTRB(4,7,4,7),child:SingleChildScrollView(scrollDirection:Axis.horizontal,
+        child:Row(children:modes.map((mode)=>Padding(padding:const EdgeInsetsDirectional.only(end:7),
+          child:ChoiceChip(avatar:Icon(mode.$3,size:17),label:Text(mode.$2),selected:state.mode==mode.$1,
+            onSelected:(_)=>state.setMode(mode.$1)))).toList()))),
+      Padding(padding:const EdgeInsets.symmetric(horizontal:4,vertical:5),child:Text(t('paletteHint'),
+        style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))),
+      TextField(onChanged:(value)=>setState(()=>paletteSearch=value),decoration:const InputDecoration(
+        prefixIcon:Icon(Icons.search_rounded),hintText:'Find Ocean, Rose, Mono...')),
       const SizedBox(height:10),
-      Wrap(spacing:7,runSpacing:7,children:[for(final c in ['All','Cool','Nature','Warm','Minimal'])ChoiceChip(
-        label:Text(c=='All'?t('all'):c=='Cool'?'Cool':c=='Nature'?'Nature':c=='Warm'?'Warm':'Minimal'),selected:themeCategory==c,onSelected:(_)=>setState(()=>themeCategory=c))]),
+      Wrap(spacing:7,runSpacing:7,children:[
+        for(final name in ['All','Cool','Nature','Warm','Minimal'])
+          ChoiceChip(label:Text(name=='All'?t('all'):t(name)),selected:category==name,onSelected:(_)=>setState(()=>category=name))
+      ]),
       const SizedBox(height:12),
-      SizedBox(height:310,child:GridView.builder(itemCount:choices.length,
+      SizedBox(height:310,child:GridView.builder(itemCount:presets.length,
         gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:114,mainAxisExtent:86,crossAxisSpacing:9,mainAxisSpacing:9),
-        itemBuilder:(context,i){final p=choices[i];final selected=s.preset.name==p.name;return InkWell(borderRadius:BorderRadius.circular(16),onTap:()=>s.setTheme(ThemeCatalog.presets.indexOf(p)),
-          child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(16),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Expanded(child:ClipRRect(borderRadius:BorderRadius.circular(10),child:Row(children:[Expanded(child:ColoredBox(color:p.primary)),Expanded(child:ColoredBox(color:p.secondary)),Expanded(child:ColoredBox(color:theme.colorScheme.surfaceContainerHigh))]))),
-              const SizedBox(height:6),Row(children:[Expanded(child:Text(p.name,maxLines:1,overflow:TextOverflow.ellipsis,style:theme.textTheme.labelSmall?.copyWith(fontWeight:FontWeight.w800))),if(selected)Icon(Icons.check_circle_rounded,color:theme.colorScheme.primary,size:15)])])));
+        itemBuilder:(context,i){
+          final preset=presets[i],selected=state.preset.name==presets[i].name;
+          return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(16),
+            onTap:()=>state.setTheme(ThemeCatalog.presets.indexOf(preset)),
+            child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:theme.colorScheme.surface,
+              borderRadius:BorderRadius.circular(16),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Expanded(child:ClipRRect(borderRadius:BorderRadius.circular(10),child:Row(children:[
+                  Expanded(child:ColoredBox(color:preset.primary)),Expanded(child:ColoredBox(color:preset.secondary)),
+                  Expanded(child:ColoredBox(color:theme.colorScheme.surfaceContainerHigh))]))),
+                const SizedBox(height:6),Row(children:[Expanded(child:Text(preset.name,maxLines:1,overflow:TextOverflow.ellipsis,
+                  style:theme.textTheme.labelSmall?.copyWith(fontWeight:FontWeight.w800))),
+                  if(selected)Icon(Icons.check_circle_rounded,color:theme.colorScheme.primary,size:15)])
+              ]))));
         })),
-      Padding(padding:const EdgeInsets.only(top:8),child:Text('Selected: ${s.preset.name}',style:theme.textTheme.labelMedium?.copyWith(color:theme.colorScheme.onSurfaceVariant)))
+      Padding(padding:const EdgeInsets.only(top:8),child:Text('Selected: '+state.preset.name,
+        style:theme.textTheme.labelMedium?.copyWith(color:theme.colorScheme.onSurfaceVariant)))
     ]);
   }
 
-  Widget _language(BuildContext context,AppState s,String Function(String) t)=>section(t('language'),'16 locale choices • RTL-aware layout',Icons.translate_rounded,[
-    Padding(padding:const EdgeInsets.all(6),child:DropdownButtonFormField<Locale>(
-      value:s.locale,isExpanded:true,decoration:InputDecoration(labelText:t('language')),
-      items:List.generate(L10n.locales.length,(i)=>DropdownMenuItem(value:L10n.locales[i],child:Text(L10n.names[i],overflow:TextOverflow.ellipsis))),
-      onChanged:(v){if(v!=null)s.setLocale(v);})),
-    Padding(padding:const EdgeInsets.fromLTRB(8,8,8,0),child:Text('Persian, Arabic and Hebrew use right-to-left layout; other locales use left-to-right layout.',
-      style:Theme.of(context).textTheme.bodySmall?.copyWith(color:Theme.of(context).colorScheme.onSurfaceVariant)))
-  ]);
+  Widget _language(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('language'),'16 locale choices • RTL-aware layout',Icons.translate_rounded,[
+      Padding(padding:const EdgeInsets.all(6),child:DropdownButtonFormField<Locale>(
+        value:state.locale,isExpanded:true,decoration:InputDecoration(labelText:t('language')),
+        items:List.generate(L10n.locales.length,(i)=>DropdownMenuItem(value:L10n.locales[i],child:Text(L10n.names[i],overflow:TextOverflow.ellipsis))),
+        onChanged:(locale){if(locale!=null)state.setLocale(locale);})),
+      Padding(padding:const EdgeInsets.fromLTRB(8,8,8,0),child:Text(
+        'Persian, Arabic and Hebrew use right-to-left layout. Material controls use Flutter localization delegates.',
+        style:Theme.of(context).textTheme.bodySmall?.copyWith(color:Theme.of(context).colorScheme.onSurfaceVariant)))
+    ]);
 
-  Widget _general(BuildContext context,AppState s,String Function(String) t)=>section(t('general'),'Interaction, autosave and recovery',Icons.tune_rounded,[
-    switchRow(s,'autosave',t('autosave'),'Save a local draft while composing.',icon:Icons.save_outlined),
-    switchRow(s,'autoRecovery',t('recovery'),'Restore the last local draft when opening a matching editor.',icon:Icons.history_rounded),
-    switchRow(s,'animations',t('motion'),'Use gentle transitions between screens.',icon:Icons.animation_rounded),
-    switchRow(s,'haptics',t('haptics'),'Use touch feedback when changing theme or saving.',icon:Icons.vibration_rounded),
-    switchRow(s,'compact',t('compact'),'Reduce spacing in editor toolbars.',icon:Icons.view_compact_alt_outlined),
-    switchRow(s,'keepRecent',t('keepRecent'),'Keep up to 20 document names on this device.',icon:Icons.history_toggle_off_rounded),
-  ]);
-  Widget _editor(BuildContext context,AppState s,String Function(String) t)=>section(t('editor'),'Editing and canvas helpers',Icons.edit_note_rounded,[
-    switchRow(s,'spellCheck',t('spell'),'Enable keyboard autocorrect in the document composer.',icon:Icons.spellcheck_rounded),
-    switchRow(s,'showGrid',t('grid'),'Keep grid preference enabled in workspace settings.',icon:Icons.grid_on_rounded),
-    switchRow(s,'focusMode',t('focus'),'Use a less distracting composing canvas.',icon:Icons.center_focus_strong_rounded),
-    switchRow(s,'safeSave',t('safeSave'),'Open the system Save As dialog for generated files.',icon:Icons.save_as_outlined),
-  ]);
-  Widget _security(BuildContext context,AppState s,String Function(String) t)=>section(t('security'),'Local data controls',Icons.shield_outlined,[
-    switchRow(s,'diagnostics',t('diagnostics'),'Enable local diagnostics for troubleshooting.',icon:Icons.bug_report_outlined),
-    const Padding(padding:EdgeInsets.fromLTRB(12,7,12,5),child:Text('Generated files and drafts stay on-device in these flows. Cloud sync, app lock and protected-document permissions are not enabled in this build.'))
-  ]);
-  Widget _accessibility(BuildContext context,AppState s,String Function(String) t)=>section(t('accessibility'),'Screen comfort and legibility',Icons.accessibility_new_rounded,[
-    switchRow(s,'blueLightFilter',t('blue'),t('blueSub'),icon:Icons.remove_red_eye_outlined),
-    Padding(padding:const EdgeInsets.fromLTRB(10,6,10,4),child:Column(children:[
-      Row(children:[Expanded(child:Text(t('blueStrength'),style:const TextStyle(fontWeight:FontWeight.w700))),Text('${(s.blueStrength*100).round()}%')]),
-      Slider(value:s.blueStrength,min:0,max:1,divisions:20,label:'${(s.blueStrength*100).round()}%',onChanged:s.setBlueStrength),
-      Row(children:[Expanded(child:Text(t('textScale'),style:const TextStyle(fontWeight:FontWeight.w700))),Text('${(s.textScale*100).round()}%')]),
-      Slider(value:s.textScale,min:0.85,max:1.35,divisions:10,label:'${(s.textScale*100).round()}%',onChanged:s.setTextScale),
-    ])),
-    switchRow(s,'highContrast',t('contrast'),'Increase visual separation across surfaces.',icon:Icons.contrast_rounded),
-  ]);
-  Widget _performance(BuildContext context,AppState s,String Function(String) t)=>section(t('performance'),'Applied immediately',Icons.speed_rounded,[
-    ListTile(leading:const Icon(Icons.palette_outlined),title:const Text('Active palette'),subtitle:Text(s.preset.name),trailing:Container(width:26,height:26,decoration:BoxDecoration(color:s.preset.primary,borderRadius:BorderRadius.circular(8)))),
-    ListTile(leading:const Icon(Icons.devices_rounded),title:const Text('Responsive layout'),subtitle:const Text('Navigation rail on wider layouts; bottom navigation on phones.')),
-    ListTile(leading:const Icon(Icons.language_outlined),title:const Text('Text direction'),subtitle:Text(L10n.rtl(s.locale)?'Right-to-left':'Left-to-right')),
-  ]);
+  Widget _general(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('general'),'Interaction, autosave and recovery',Icons.tune_rounded,[
+      _switchRow(state,'autosave',t('autosave'),'Save a local draft while composing.',icon:Icons.save_outlined),
+      _switchRow(state,'autoRecovery',t('recovery'),'Restore the latest saved draft.',icon:Icons.history_rounded),
+      _switchRow(state,'animations',t('motion'),'Enable screen transitions.',icon:Icons.animation_rounded),
+      _switchRow(state,'haptics',t('haptics'),'Use touch feedback for selection and save.',icon:Icons.vibration_rounded),
+      _switchRow(state,'compact',t('compact'),'Reduce toolbar spacing.',icon:Icons.view_compact_alt_outlined),
+      _switchRow(state,'keepRecent',t('keepRecent'),'Keep up to 20 file names on this device.',icon:Icons.history_toggle_off_rounded),
+    ]);
 
-  Future<void> _export(AppState s,String Function(String) t) async {
-    final bytes=Uint8List.fromList(utf8.encode(const JsonEncoder.withIndent('  ').convert(s.exportablePreferences())));
+  Widget _editor(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('editor'),'Editing and canvas preferences',Icons.edit_note_rounded,[
+      _switchRow(state,'spellCheck',t('spell'),'Enable keyboard autocorrect in the composing field.',icon:Icons.spellcheck_rounded),
+      _switchRow(state,'showGrid',t('grid'),'Remember the grid preference for workspace tools.',icon:Icons.grid_on_rounded),
+      _switchRow(state,'focusMode',t('focus'),'Use a less distracting composition canvas.',icon:Icons.center_focus_strong_rounded),
+      _switchRow(state,'safeSave',t('safeSave'),'Use the system Save As flow for new files.',icon:Icons.save_as_outlined),
+    ]);
+
+  Widget _security(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('security'),'Local processing and privacy choices',Icons.shield_outlined,[
+      _switchRow(state,'diagnostics',t('diagnostics'),'Enable local diagnostics for troubleshooting.',icon:Icons.bug_report_outlined),
+      const Padding(padding:EdgeInsets.fromLTRB(12,7,12,5),child:Text(
+        'Generated files and drafts stay on-device in these flows. Cloud sync, app lock and document permissions are not enabled in this build.'))
+    ]);
+
+  Widget _accessibility(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('accessibility'),'Screen comfort and readability',Icons.accessibility_new_rounded,[
+      _switchRow(state,'blueLightFilter',t('blue'),t('blueSub'),icon:Icons.remove_red_eye_outlined),
+      Padding(padding:const EdgeInsets.fromLTRB(10,6,10,4),child:Column(children:[
+        Row(children:[Expanded(child:Text(t('blueStrength'),style:const TextStyle(fontWeight:FontWeight.w700))),
+          Text((state.blueStrength*100).round().toString()+'%')]),
+        Slider(value:state.blueStrength,min:0,max:1,divisions:20,onChanged:state.setBlueStrength),
+        Row(children:[Expanded(child:Text(t('textScale'),style:const TextStyle(fontWeight:FontWeight.w700))),
+          Text((state.textScale*100).round().toString()+'%')]),
+        Slider(value:state.textScale,min:0.85,max:1.35,divisions:10,onChanged:state.setTextScale)
+      ])),
+      _switchRow(state,'highContrast',t('contrast'),'Increase contrast across surfaces and boundaries.',icon:Icons.contrast_rounded),
+    ]);
+
+  Widget _performance(BuildContext context,AppState state,String Function(String) t)=>_section(
+    t('performance'),'Current runtime behavior',Icons.speed_rounded,[
+      ListTile(leading:const Icon(Icons.palette_outlined),title:const Text('Active palette'),subtitle:Text(state.preset.name),
+        trailing:Container(width:26,height:26,decoration:BoxDecoration(color:state.preset.primary,borderRadius:BorderRadius.circular(8)))),
+      ListTile(leading:const Icon(Icons.devices_rounded),title:const Text('Responsive navigation'),
+        subtitle:const Text('Navigation rail on wide layouts; bottom navigation on phones.')),
+      ListTile(leading:const Icon(Icons.language_outlined),title:const Text('Text direction'),
+        subtitle:Text(L10n.rtl(state.locale)?'Right to left':'Left to right')),
+    ]);
+
+  Future<void> _export(AppState state,String Function(String) t) async{
+    final bytes=Uint8List.fromList(utf8.encode(const JsonEncoder.withIndent('  ').convert(state.exportablePreferences())));
     await FilePicker.saveFile(fileName:'parin-office-settings.json',bytes:bytes,mimeType:'application/json',dialogTitle:t('export'));
   }
-  Future<void> _reset(AppState s,String Function(String) t) async {
-    final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:Text(t('reset')),content:Text(t('resetQuestion')),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(t('cancel'))),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:Text(t('reset')))]));
-    if(yes==true)await s.resetPreferences();
+  Future<void> _reset(AppState state,String Function(String) t) async{
+    final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:Text(t('reset')),
+      content:Text(t('resetQuestion')),actions:[
+        TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(t('cancel'))),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:Text(t('reset')))]));
+    if(yes==true)await state.resetPreferences();
   }
-}
-
- const SettingsPage({super.key,required this.state});final AppState state;
- Widget section(String title,IconData icon,List<Widget> children)=>Card(child:ExpansionTile(initiallyExpanded:true,leading:Icon(icon),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),children:children));
- @override Widget build(BuildContext c){
-  final t=(String k)=>L10n.text(state.locale,k);
-  return Scaffold(appBar:AppBar(title:Text(t('settings'))),body:ListView(padding:const EdgeInsets.fromLTRB(18,12,18,40),children:[
-   section(t('appearance'),Icons.palette_outlined,[
-    ListTile(title:Text(t('themes')),subtitle:const Text('128 color presets')),
-    SizedBox(height:320,child:GridView.builder(itemCount:128,gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:78,crossAxisSpacing:8,mainAxisSpacing:8),itemBuilder:(ctx,i){final p=ThemeCatalog.presets[i];final selected=i==state.themeIndex;return InkWell(onTap:()=>state.setTheme(i),borderRadius:BorderRadius.circular(16),child:Container(decoration:BoxDecoration(borderRadius:BorderRadius.circular(16),gradient:LinearGradient(colors:[p.primary,p.secondary]),border:selected?Border.all(color:Theme.of(ctx).colorScheme.onSurface,width:3):null),child:Center(child:Text((i+1).toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)))));})),
-    ListTile(title:const Text('Display mode'),trailing:DropdownButton<AppearanceMode>(value:state.mode,items:const[
-     DropdownMenuItem(value:AppearanceMode.system,child:Text('System')),DropdownMenuItem(value:AppearanceMode.light,child:Text('Light')),DropdownMenuItem(value:AppearanceMode.dark,child:Text('Dark')),DropdownMenuItem(value:AppearanceMode.amoled,child:Text('AMOLED'))
-    ],onChanged:(v){if(v!=null)state.setMode(v);}))
-   ]),
-   section(t('language'),Icons.language_outlined,List.generate(L10n.locales.length,(i){final l=L10n.locales[i];return ListTile(leading:CircleAvatar(radius:15,child:Text(l.languageCode.toUpperCase())),title:Text(L10n.names[i]),trailing:l.toLanguageTag()==state.locale.toLanguageTag()?const Icon(Icons.check_circle):null,onTap:()=>state.setLocale(l));})),
-   section(t('general'),Icons.tune_rounded,[
-    SwitchListTile(value:state.autosave,onChanged:(v)=>state.setFlag('autosave',v),title:const Text('Smart autosave')),
-    SwitchListTile(value:state.animations,onChanged:(v)=>state.setFlag('animations',v),title:const Text('Motion and transitions')),
-    SwitchListTile(value:state.haptics,onChanged:(v)=>state.setFlag('haptics',v),title:const Text('Haptic feedback')),
-    SwitchListTile(value:state.compactRibbon,onChanged:(v)=>state.setFlag('compact',v),title:const Text('Compact ribbon')),
-    const ListTile(title:Text('Safe save policy'),subtitle:Text('Protect originals and use Save As when required'))
-   ]),
-   section(t('editor'),Icons.edit_note_rounded,[
-    const ListTile(title:Text('Command palette'),subtitle:Text('Search every action and shortcut')),
-    const ListTile(title:Text('Undo / redo'),subtitle:Text('250+ action history')),
-    const ListTile(title:Text('Rulers & snapping'),subtitle:Text('Guides, grid and precise placement')),
-    const ListTile(title:Text('Stylus'),subtitle:Text('Pressure, palm rejection and quick tools')),
-    const ListTile(title:Text('Typography'),subtitle:Text('Fonts, spacing, ligatures and RTL shaping')),
-   ]),
-   section(t('security'),Icons.security_outlined,[
-    SwitchListTile(value:state.diagnostics,onChanged:(v)=>state.setFlag('diagnostics',v),title:const Text('Anonymous diagnostics')),
-    const ListTile(title:Text('App lock'),subtitle:Text('PIN, biometrics and timeout')),
-    const ListTile(title:Text('Protected documents'),subtitle:Text('Passwords, permissions and safe handling')),
-   ]),
-   section(t('performance'),Icons.speed_rounded,[
-    const ListTile(title:Text('Large-document mode'),subtitle:Text('Virtualized pages, slides and spreadsheet rows')),
-    const ListTile(title:Text('Rendering'),subtitle:Text('Progressive tiles, caching and GPU-first painting')),
-    const ListTile(title:Text('Memory'),subtitle:Text('Automatic cache trimming and recovery checkpoints')),
-   ]),
-   section(t('accessibility'),Icons.accessibility_new_rounded,[
-    const ListTile(title:Text('Text scaling'),subtitle:Text('80%–200%')),
-    const ListTile(title:Text('High contrast'),subtitle:Text('Focus rings and stronger boundaries')),
-    const ListTile(title:Text('Reduced motion'),subtitle:Text('Disable non-essential animations')),
-    const ListTile(title:Text('Screen reader'),subtitle:Text('Semantics and keyboard navigation')),
-   ]),
-   section('Power user',Icons.developer_mode_rounded,[
-    const ListTile(title:Text('Compatibility'),subtitle:Text('Strict / balanced / maximum preservation')),
-    const ListTile(title:Text('Recovery center'),subtitle:Text('Restore interrupted document sessions')),
-    const ListTile(title:Text('Experimental engines'),subtitle:Text('Preview advanced Word / Excel / PowerPoint engines')),
-   ]),
-  ]));
- }
 }

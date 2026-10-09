@@ -7,10 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:intl/date_symbol_data_local.dart' as intl_data;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'document_factory.dart';
 
-void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const ParinOfficeApp()); }
+Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); runApp(const ParinOfficeApp()); }
 
 enum AppearanceMode { system, light, dark, amoled }
 
@@ -34,29 +35,117 @@ class ThemeCatalog {
   });
   static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false}){
     final dark=brightness==Brightness.dark;
-    final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF101116):const Color(0xFFF5F7FB);
-    final surface=amoled?const Color(0xFF000000):dark?const Color(0xFF191B22):Colors.white;
-    final raised=amoled?const Color(0xFF08090D):dark?const Color(0xFF20232C):const Color(0xFFFFFFFF);
-    final scheme=ColorScheme.fromSeed(seedColor:preset.primary,brightness:brightness,contrastLevel:highContrast?0.75:0).copyWith(
-      primary:preset.primary,secondary:preset.secondary,surface:surface,surfaceContainerLowest:canvas,
-      surfaceContainerLow:raised,surfaceContainer:raised,
-      outline:dark?const Color(0xFF3D414C):const Color(0xFFE0E4EC),
-      outlineVariant:dark?const Color(0xFF2C3039):const Color(0xFFE9ECF2));
+    final source=HSLColor.fromColor(preset.primary);
+    final sourceSecondary=HSLColor.fromColor(preset.secondary);
+    // Keep hue identity while normalizing contrast for every appearance mode.
+    final primary=dark
+      ?source.withLightness(0.69).withSaturation((source.saturation*1.05).clamp(0.0,1.0).toDouble()).toColor()
+      :source.withLightness(source.lightness.clamp(0.31,0.42).toDouble()).toColor();
+    final secondary=dark
+      ?sourceSecondary.withLightness(0.73).toColor()
+      :sourceSecondary.withLightness(sourceSecondary.lightness.clamp(0.34,0.44).toDouble()).toColor();
+    final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF0B0F16):const Color(0xFFF5F7FB);
+    final surface=amoled?const Color(0xFF080B11):dark?const Color(0xFF141923):Colors.white;
+    final raised=amoled?const Color(0xFF10141D):dark?const Color(0xFF1C2330):Colors.white;
+    final field=amoled?const Color(0xFF10141D):dark?const Color(0xFF1A202B):const Color(0xFFF1F4F9);
+    final outline=dark?const Color(0xFF4B5565):const Color(0xFFD6DCE7);
+    final outlineVariant=dark?const Color(0xFF303847):const Color(0xFFE2E7EF);
+    final scheme=ColorScheme.fromSeed(
+      seedColor:primary,
+      brightness:brightness,
+      contrastLevel:highContrast?1.0:0.12,
+    ).copyWith(
+      primary:primary,
+      onPrimary:dark?const Color(0xFF111522):Colors.white,
+      secondary:secondary,
+      onSecondary:dark?const Color(0xFF111522):Colors.white,
+      surface:surface,
+      surfaceContainerLowest:canvas,
+      surfaceContainerLow:surface,
+      surfaceContainer:raised,
+      surfaceContainerHigh:raised,
+      surfaceContainerHighest:dark?const Color(0xFF252D3A):const Color(0xFFE9EDF5),
+      outline:outline,
+      outlineVariant:outlineVariant,
+      onSurface:dark?const Color(0xFFF2F5FA):const Color(0xFF182133),
+      onSurfaceVariant:dark?const Color(0xFFB7C1D1):const Color(0xFF5E6A7D),
+      inverseSurface:dark?const Color(0xFFE9EDF5):const Color(0xFF202838),
+      inversePrimary:dark?preset.primary:primary,
+    );
     return ThemeData(
-      useMaterial3:true,visualDensity:compact?VisualDensity.compact:VisualDensity.standard,brightness:brightness,colorScheme:scheme,scaffoldBackgroundColor:canvas,canvasColor:surface,
-      cardTheme:CardThemeData(color:surface,elevation:0,margin:EdgeInsets.zero,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20),side:BorderSide(color:scheme.outlineVariant))),
-      appBarTheme:AppBarTheme(centerTitle:false,elevation:0,scrolledUnderElevation:0,backgroundColor:canvas,surfaceTintColor:Colors.transparent,
-        titleTextStyle:TextStyle(color:scheme.onSurface,fontSize:20,fontWeight:FontWeight.w800)),
-      dividerTheme:DividerThemeData(color:scheme.outlineVariant,thickness:1,space:1),
-      inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:dark?const Color(0xFF20232B):const Color(0xFFF7F8FC),
+      useMaterial3:true,
+      visualDensity:compact?VisualDensity.compact:VisualDensity.standard,
+      brightness:brightness,
+      colorScheme:scheme,
+      scaffoldBackgroundColor:canvas,
+      canvasColor:surface,
+      cardTheme:CardThemeData(
+        color:raised,
+        elevation:0,
+        margin:EdgeInsets.zero,
+        shape:RoundedRectangleBorder(
+          borderRadius:BorderRadius.circular(18),
+          side:BorderSide(color:outlineVariant),
+        ),
+      ),
+      appBarTheme:AppBarTheme(
+        centerTitle:false,
+        elevation:0,
+        scrolledUnderElevation:0,
+        backgroundColor:canvas,
+        surfaceTintColor:Colors.transparent,
+        titleTextStyle:TextStyle(color:scheme.onSurface,fontSize:20,fontWeight:FontWeight.w800),
+      ),
+      dividerTheme:DividerThemeData(color:outlineVariant,thickness:1,space:1),
+      inputDecorationTheme:InputDecorationTheme(
+        filled:true,
+        fillColor:field,
         contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),
-        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.outlineVariant)),
-        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.outlineVariant)),
-        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.primary,width:1.6))),
-      filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(44,46),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),textStyle:const TextStyle(fontWeight:FontWeight.w800))),
-      chipTheme:ChipThemeData(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),side:BorderSide(color:scheme.outlineVariant),padding:const EdgeInsets.symmetric(horizontal:6,vertical:5)),
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
+        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
+        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:primary,width:1.6)),
+      ),
+      filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
+        foregroundColor:scheme.onPrimary,
+        backgroundColor:primary,
+        minimumSize:const Size(44,46),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        textStyle:const TextStyle(fontWeight:FontWeight.w800),
+      )),
+      outlinedButtonTheme:OutlinedButtonThemeData(style:OutlinedButton.styleFrom(
+        minimumSize:const Size(44,44),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        side:BorderSide(color:outline),
+      )),
+      chipTheme:ChipThemeData(
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+        side:BorderSide(color:outlineVariant),
+        padding:const EdgeInsets.symmetric(horizontal:6,vertical:5),
+      ),
+      navigationBarTheme:NavigationBarThemeData(
+        backgroundColor:surface,
+        indicatorColor:primary.withAlpha(dark?56:28),
+        elevation:0,
+        labelTextStyle:WidgetStateProperty.resolveWith((states)=>TextStyle(
+          fontSize:12,
+          fontWeight:states.contains(WidgetState.selected)?FontWeight.w800:FontWeight.w500,
+          color:states.contains(WidgetState.selected)?primary:scheme.onSurfaceVariant,
+        )),
+      ),
+      navigationRailTheme:NavigationRailThemeData(
+        backgroundColor:surface,
+        indicatorColor:primary.withAlpha(dark?56:28),
+        selectedIconTheme:IconThemeData(color:primary),
+        unselectedIconTheme:IconThemeData(color:scheme.onSurfaceVariant),
+      ),
       snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
-      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22))));
+      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22))),
+      bottomSheetTheme:BottomSheetThemeData(backgroundColor:surface,showDragHandle:true),
+      switchTheme:SwitchThemeData(
+        thumbColor:WidgetStateProperty.resolveWith((states)=>states.contains(WidgetState.selected)?scheme.onPrimary:scheme.onSurfaceVariant),
+        trackColor:WidgetStateProperty.resolveWith((states)=>states.contains(WidgetState.selected)?primary:scheme.surfaceContainerHighest),
+      ),
+    );
   }
 }
 class RecentDocument {
@@ -74,6 +163,9 @@ class AppState extends ChangeNotifier {
   bool autosave=true,animations=true,haptics=true,compactRibbon=false,diagnostics=false;
   bool autoRecovery=true,blueLightFilter=false,highContrast=false,spellCheck=true,showGrid=true,focusMode=false,safeSave=true,keepRecent=true;
   bool showWordCount=true,smartCapitalization=true,openRecentOnStart=false;
+  bool showWelcomePanel=true,showQuickActions=true,showDashboardMetrics=true,confirmRecentRemoval=true;
+  String editorFontFamily='system';
+  double lineSpacing=1.25;
   double autoSaveDelay=0.45,defaultFontSize=16;
   List<RecentDocument> recent=<RecentDocument>[];
   ThemePreset get preset=>ThemeCatalog.presets[themeIndex.clamp(0,127)];
@@ -82,7 +174,8 @@ class AppState extends ChangeNotifier {
     'autosave'=>autosave,'animations'=>animations,'haptics'=>haptics,'compact'=>compactRibbon,
     'diagnostics'=>diagnostics,'autoRecovery'=>autoRecovery,'blueLightFilter'=>blueLightFilter,
     'highContrast'=>highContrast,'spellCheck'=>spellCheck,'showGrid'=>showGrid,'focusMode'=>focusMode,
-    'safeSave'=>safeSave,'keepRecent'=>keepRecent,'showWordCount'=>showWordCount,'smartCapitalization'=>smartCapitalization,'openRecentOnStart'=>openRecentOnStart,_=>false};
+    'safeSave'=>safeSave,'keepRecent'=>keepRecent,'showWordCount'=>showWordCount,'smartCapitalization'=>smartCapitalization,'openRecentOnStart'=>openRecentOnStart,
+    'showWelcomePanel'=>showWelcomePanel,'showQuickActions'=>showQuickActions,'showDashboardMetrics'=>showDashboardMetrics,'confirmRecentRemoval'=>confirmRecentRemoval,_=>false};
   Future<void> load() async {
     final p=await SharedPreferences.getInstance();
     final raw=p.getString('locale')??'en';final parts=raw.split('-');
@@ -99,6 +192,10 @@ class AppState extends ChangeNotifier {
     focusMode=p.getBool('focusMode')??false;safeSave=p.getBool('safeSave')??true;keepRecent=p.getBool('keepRecent')??true;
     showWordCount=p.getBool('showWordCount')??true;smartCapitalization=p.getBool('smartCapitalization')??true;openRecentOnStart=p.getBool('openRecentOnStart')??false;
     autoSaveDelay=(p.getDouble('autoSaveDelay')??0.45).clamp(0.2,2.0);defaultFontSize=(p.getDouble('defaultFontSize')??16).clamp(13,22);
+    editorFontFamily=switch(p.getString('editorFontFamily')){'serif'=>'serif','monospace'=>'monospace',_=>'system'};
+    lineSpacing=(p.getDouble('lineSpacing')??1.25).clamp(1.0,2.0);
+    showWelcomePanel=p.getBool('showWelcomePanel')??true;showQuickActions=p.getBool('showQuickActions')??true;
+    showDashboardMetrics=p.getBool('showDashboardMetrics')??true;confirmRecentRemoval=p.getBool('confirmRecentRemoval')??true;
     try { final value=p.getString('recentDocuments'); if(value!=null)recent=(jsonDecode(value) as List<dynamic>).whereType<Map<String,dynamic>>().map(RecentDocument.fromJson).take(20).toList(); } catch (_) {recent=<RecentDocument>[];}
   }
   Future<void> setLocale(Locale v) async {locale=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('locale',v.toLanguageTag());}
@@ -107,6 +204,8 @@ class AppState extends ChangeNotifier {
   Future<void> setTextScale(double v) async {textScale=v.clamp(0.85,1.35);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('textScale',textScale);}
   Future<void> setAutoSaveDelay(double v) async {autoSaveDelay=v.clamp(0.2,2.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('autoSaveDelay',autoSaveDelay);}
   Future<void> setDefaultFontSize(double v) async {defaultFontSize=v.clamp(13,22);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('defaultFontSize',defaultFontSize);}
+  Future<void> setEditorFontFamily(String v) async {editorFontFamily=switch(v){'serif'=>'serif','monospace'=>'monospace',_=>'system'};notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('editorFontFamily',editorFontFamily);}
+  Future<void> setLineSpacing(double v) async {lineSpacing=v.clamp(1.0,2.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('lineSpacing',lineSpacing);}
   Future<void> setBlueStrength(double v) async {blueStrength=v.clamp(0.0,1.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('blueStrength',blueStrength);}
   Future<void> setFlag(String key,bool v) async {
     switch(key){
@@ -115,6 +214,8 @@ class AppState extends ChangeNotifier {
       case 'blueLightFilter': blueLightFilter=v; break; case 'highContrast': highContrast=v; break; case 'spellCheck': spellCheck=v; break;
       case 'showGrid': showGrid=v; break; case 'focusMode': focusMode=v; break; case 'safeSave': safeSave=v; break; case 'keepRecent': keepRecent=v; break;
       case 'showWordCount': showWordCount=v; break; case 'smartCapitalization': smartCapitalization=v; break; case 'openRecentOnStart': openRecentOnStart=v; break;
+      case 'showWelcomePanel': showWelcomePanel=v; break; case 'showQuickActions': showQuickActions=v; break;
+      case 'showDashboardMetrics': showDashboardMetrics=v; break; case 'confirmRecentRemoval': confirmRecentRemoval=v; break;
     }
     notifyListeners();final p=await SharedPreferences.getInstance();await p.setBool(key,v);
   }
@@ -134,16 +235,19 @@ class AppState extends ChangeNotifier {
   Future<void> resetPreferences() async {
     final p=await SharedPreferences.getInstance();locale=const Locale('en');mode=AppearanceMode.system;themeIndex=0;textScale=1;blueStrength=0.48;
     autosave=true;animations=true;haptics=true;compactRibbon=false;diagnostics=false;autoRecovery=true;blueLightFilter=false;highContrast=false;
-    spellCheck=true;showGrid=true;focusMode=false;safeSave=true;keepRecent=true;showWordCount=true;smartCapitalization=true;openRecentOnStart=false;autoSaveDelay=0.45;defaultFontSize=16;
-    for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent','showWordCount','smartCapitalization','openRecentOnStart','autoSaveDelay','defaultFontSize']){await p.remove(key);}
+    spellCheck=true;showGrid=true;focusMode=false;safeSave=true;keepRecent=true;showWordCount=true;smartCapitalization=true;openRecentOnStart=false;
+    showWelcomePanel=true;showQuickActions=true;showDashboardMetrics=true;confirmRecentRemoval=true;editorFontFamily='system';lineSpacing=1.25;autoSaveDelay=0.45;defaultFontSize=16;
+    for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent','showWordCount','smartCapitalization','openRecentOnStart','showWelcomePanel','showQuickActions','showDashboardMetrics','confirmRecentRemoval','editorFontFamily','lineSpacing','autoSaveDelay','defaultFontSize']){await p.remove(key);}
     notifyListeners();
   }
   Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
-    'textScale':textScale,'blueLightStrength':blueStrength,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
+    'textScale':textScale,'blueLightStrength':blueStrength,'editorFontFamily':editorFontFamily,'lineSpacing':lineSpacing,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
     'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
     if(diagnostics) 'diagnosticsReport':{'build':'0.10','recentDocumentCount':recent.length,'draftRecovery':autoRecovery},
     'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent,
-    'showWordCount':showWordCount,'smartCapitalization':smartCapitalization,'openRecentOnStart':openRecentOnStart,'autoSaveDelay':autoSaveDelay,'defaultFontSize':defaultFontSize}};
+    'showWordCount':showWordCount,'smartCapitalization':smartCapitalization,'openRecentOnStart':openRecentOnStart,
+    'showWelcomePanel':showWelcomePanel,'showQuickActions':showQuickActions,'showDashboardMetrics':showDashboardMetrics,'confirmRecentRemoval':confirmRecentRemoval,
+    'autoSaveDelay':autoSaveDelay,'defaultFontSize':defaultFontSize}};
 }
 class L10n {
   static const locales=<Locale>[Locale('fa'),Locale('en'),Locale('da'),Locale('de'),Locale('de','CH'),Locale('ar'),Locale('hi'),Locale('he'),Locale('es'),Locale('it'),Locale('sv'),Locale('fi'),Locale('no'),Locale('is'),Locale('el'),Locale('tr')];
@@ -296,10 +400,29 @@ class L10n {
     'keepRecent':'Διατήρηση πρόσφατων εγγράφων','contrast':'Υψηλή αντίθεση','spell':'Προτάσεις κειμένου','grid':'Εμφάνιση πλέγματος','focus':'Εστιασμένος επεξεργαστής',
     'safeSave':'Ασφαλέστερη αποθήκευση','diagnostics':'Ανώνυμα διαγνωστικά','resetQuestion':'Επαναφορά προτιμήσεων εφαρμογής;','paletteHint':'128 συντονισμένες παλέτες για φωτεινή, σκοτεινή και AMOLED λειτουργία.','saved':'Το αρχείο αποθηκεύτηκε','all':'Όλα'};
 
+
+  static const extra=<String,Map<String,String>>{
+    'en':{'Cool':'Cool','Nature':'Nature','Warm':'Warm','Minimal':'Minimal','createFirst':'Create your first document','wordCount':'Live word count','smartCaps':'Smart capitalization','openRecentStart':'Open Recent at startup','saveDelay':'Autosave delay','defaultFontSize':'Editor font size','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Draft restored','search':'Search','fontFamily':'Editor font family','fontSystem':'System','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Line spacing','dashboardOptions':'Dashboard personalization','showWelcomePanel':'Show welcome panel','showQuickActions':'Show quick actions','showDashboardMetrics':'Show dashboard metrics','confirmRecentRemoval':'Confirm before removing recent items','metricThemes':'Themes','metricLanguages':'Languages','metricLayout':'Layout','metricPrivacy':'Privacy','activePalette':'Active palette','responsiveNavigation':'Responsive navigation','rtl':'Right to left','ltr':'Left to right'},
+    'fa':{'Cool':'سرد','Nature':'طبیعت','Warm':'گرم','Minimal':'مینیمال','createFirst':'اولین سند خود را بسازید','wordCount':'شمارش زنده کلمات','smartCaps':'بزرگ‌نویسی خودکار','openRecentStart':'نمایش اسناد اخیر هنگام شروع','saveDelay':'فاصله ذخیره خودکار','defaultFontSize':'اندازه قلم ویرایشگر','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'پیش‌نویس بازیابی شد','search':'جست‌وجو','fontFamily':'قلم ویرایشگر','fontSystem':'سیستمی','fontSerif':'سریف','fontMono':'تک‌فاصله','lineSpacing':'فاصله خطوط','dashboardOptions':'شخصی‌سازی داشبورد','showWelcomePanel':'نمایش پنل خوش‌آمدگویی','showQuickActions':'نمایش عملیات سریع','showDashboardMetrics':'نمایش آمار داشبورد','confirmRecentRemoval':'تأیید پیش از حذف از فهرست اخیر','metricThemes':'تم‌ها','metricLanguages':'زبان‌ها','metricLayout':'چیدمان','metricPrivacy':'حریم خصوصی','activePalette':'تم فعال','responsiveNavigation':'ناوبری واکنش‌گرا','rtl':'راست‌به‌چپ','ltr':'چپ‌به‌راست'},
+    'ar':{'Cool':'بارد','Nature':'طبيعة','Warm':'دافئ','Minimal':'بسيط','createFirst':'أنشئ مستندك الأول','wordCount':'عداد الكلمات المباشر','smartCaps':'تكبير الأحرف تلقائيًا','openRecentStart':'فتح الأخيرة عند التشغيل','saveDelay':'تأخير الحفظ التلقائي','defaultFontSize':'حجم خط المحرر','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'تمت استعادة المسودة','search':'بحث','fontFamily':'خط المحرر','fontSystem':'النظام','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'تباعد الأسطر','dashboardOptions':'تخصيص لوحة المعلومات','showWelcomePanel':'إظهار لوحة الترحيب','showQuickActions':'إظهار الإجراءات السريعة','showDashboardMetrics':'إظهار إحصاءات اللوحة','confirmRecentRemoval':'التأكيد قبل إزالة العناصر الأخيرة','metricThemes':'السمات','metricLanguages':'اللغات','metricLayout':'التخطيط','metricPrivacy':'الخصوصية','activePalette':'السمة النشطة','responsiveNavigation':'تنقل متكيف','rtl':'من اليمين إلى اليسار','ltr':'من اليسار إلى اليمين'},
+    'de':{'Cool':'Kühl','Nature':'Natur','Warm':'Warm','Minimal':'Minimal','createFirst':'Erstes Dokument erstellen','wordCount':'Live-Wortzähler','smartCaps':'Automatische Großschreibung','openRecentStart':'Zuletzt verwendete beim Start öffnen','saveDelay':'Auto-Speicherintervall','defaultFontSize':'Editor-Schriftgröße','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Entwurf wiederhergestellt','search':'Suchen','fontFamily':'Editor-Schriftart','fontSystem':'System','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Zeilenabstand','dashboardOptions':'Dashboard anpassen','showWelcomePanel':'Willkommensbereich anzeigen','showQuickActions':'Schnellaktionen anzeigen','showDashboardMetrics':'Dashboard-Kennzahlen anzeigen','confirmRecentRemoval':'Entfernen zuletzt verwendeter Einträge bestätigen','metricThemes':'Themen','metricLanguages':'Sprachen','metricLayout':'Layout','metricPrivacy':'Datenschutz','activePalette':'Aktive Palette','responsiveNavigation':'Responsive Navigation','rtl':'Von rechts nach links','ltr':'Von links nach rechts'},
+    'es':{'Cool':'Fríos','Nature':'Naturaleza','Warm':'Cálidos','Minimal':'Minimalistas','createFirst':'Crea tu primer documento','wordCount':'Recuento de palabras','smartCaps':'Mayúsculas inteligentes','openRecentStart':'Abrir recientes al iniciar','saveDelay':'Retardo de guardado automático','defaultFontSize':'Tamaño de letra del editor','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Borrador recuperado','search':'Buscar','fontFamily':'Fuente del editor','fontSystem':'Sistema','fontSerif':'Serif','fontMono':'Monoespaciada','lineSpacing':'Interlineado','dashboardOptions':'Personalización del panel','showWelcomePanel':'Mostrar bienvenida','showQuickActions':'Mostrar acciones rápidas','showDashboardMetrics':'Mostrar métricas del panel','confirmRecentRemoval':'Confirmar antes de quitar elementos recientes','metricThemes':'Temas','metricLanguages':'Idiomas','metricLayout':'Diseño','metricPrivacy':'Privacidad','activePalette':'Paleta activa','responsiveNavigation':'Navegación adaptable','rtl':'De derecha a izquierda','ltr':'De izquierda a derecha'},
+    'tr':{'Cool':'Soğuk','Nature':'Doğa','Warm':'Sıcak','Minimal':'Minimal','createFirst':'İlk belgenizi oluşturun','wordCount':'Canlı kelime sayısı','smartCaps':'Akıllı büyük harf','openRecentStart':'Başlangıçta son belgeleri aç','saveDelay':'Otomatik kaydetme gecikmesi','defaultFontSize':'Düzenleyici yazı boyutu','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Taslak geri yüklendi','search':'Ara','fontFamily':'Düzenleyici yazı tipi','fontSystem':'Sistem','fontSerif':'Serif','fontMono':'Eş aralıklı','lineSpacing':'Satır aralığı','dashboardOptions':'Panel kişiselleştirme','showWelcomePanel':'Karşılama panelini göster','showQuickActions':'Hızlı işlemleri göster','showDashboardMetrics':'Panel ölçümlerini göster','confirmRecentRemoval':'Son öğeleri kaldırmadan önce onayla','metricThemes':'Temalar','metricLanguages':'Diller','metricLayout':'Düzen','metricPrivacy':'Gizlilik','activePalette':'Etkin palet','responsiveNavigation':'Uyarlanabilir gezinme','rtl':'Sağdan sola','ltr':'Soldan sağa'},
+    'da':{'Cool':'Kølig','Nature':'Natur','Warm':'Varm','Minimal':'Minimal','createFirst':'Opret dit første dokument','wordCount':'Løbende ordtælling','smartCaps':'Automatisk stort begyndelsesbogstav','openRecentStart':'Åbn seneste ved start','saveDelay':'Forsinkelse for automatisk lagring','defaultFontSize':'Skriftstørrelse i editor','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Kladde gendannet','search':'Søg','fontFamily':'Skrifttype i editor','fontSystem':'System','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Linjeafstand','dashboardOptions':'Tilpas dashboard','showWelcomePanel':'Vis velkomstpanel','showQuickActions':'Vis hurtige handlinger','showDashboardMetrics':'Vis dashboardtal','confirmRecentRemoval':'Bekræft før fjernelse fra seneste','metricThemes':'Temaer','metricLanguages':'Sprog','metricLayout':'Layout','metricPrivacy':'Privatliv','activePalette':'Aktiv palet','responsiveNavigation':'Responsiv navigation','rtl':'Højre mod venstre','ltr':'Venstre mod højre'},
+    'hi':{'Cool':'ठंडे रंग','Nature':'प्रकृति','Warm':'गर्म रंग','Minimal':'मिनिमल','createFirst':'अपना पहला दस्तावेज़ बनाएँ','wordCount':'लाइव शब्द गणना','smartCaps':'स्मार्ट कैपिटलाइज़ेशन','openRecentStart':'शुरू होते ही हाल के दस्तावेज़ खोलें','saveDelay':'ऑटोसेव विलंब','defaultFontSize':'एडिटर फ़ॉन्ट आकार','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'ड्राफ़्ट बहाल हुआ','search':'खोजें','fontFamily':'एडिटर फ़ॉन्ट','fontSystem':'सिस्टम','fontSerif':'सेरिफ़','fontMono':'मोनोस्पेस','lineSpacing':'पंक्ति अंतर','dashboardOptions':'डैशबोर्ड अनुकूलन','showWelcomePanel':'स्वागत पैनल दिखाएँ','showQuickActions':'त्वरित कार्रवाइयाँ दिखाएँ','showDashboardMetrics':'डैशबोर्ड आँकड़े दिखाएँ','confirmRecentRemoval':'हाल की सूची से हटाने से पहले पुष्टि','metricThemes':'थीम','metricLanguages':'भाषाएँ','metricLayout':'लेआउट','metricPrivacy':'गोपनीयता','activePalette':'सक्रिय पैलेट','responsiveNavigation':'अनुकूली नेविगेशन','rtl':'दाएँ से बाएँ','ltr':'बाएँ से दाएँ'},
+    'he':{'Cool':'קרירים','Nature':'טבע','Warm':'חמים','Minimal':'מינימלי','createFirst':'יצירת המסמך הראשון','wordCount':'ספירת מילים חיה','smartCaps':'אותיות גדולות חכמות','openRecentStart':'פתיחת האחרונים בהפעלה','saveDelay':'השהיית שמירה אוטומטית','defaultFontSize':'גודל גופן בעורך','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'הטיוטה שוחזרה','search':'חיפוש','fontFamily':'גופן העורך','fontSystem':'מערכת','fontSerif':'סריף','fontMono':'רוחב קבוע','lineSpacing':'ריווח שורות','dashboardOptions':'התאמה אישית של לוח המחוונים','showWelcomePanel':'הצגת לוח ברוכים הבאים','showQuickActions':'הצגת פעולות מהירות','showDashboardMetrics':'הצגת מדדים','confirmRecentRemoval':'אישור לפני הסרה מהרשימה האחרונה','metricThemes':'ערכות נושא','metricLanguages':'שפות','metricLayout':'פריסה','metricPrivacy':'פרטיות','activePalette':'ערכת צבע פעילה','responsiveNavigation':'ניווט רספונסיבי','rtl':'מימין לשמאל','ltr':'משמאל לימין'},
+    'it':{'Cool':'Freddi','Nature':'Natura','Warm':'Caldi','Minimal':'Minimali','createFirst':'Crea il tuo primo documento','wordCount':'Conteggio parole in tempo reale','smartCaps':'Maiuscole automatiche','openRecentStart':'Apri recenti all’avvio','saveDelay':'Ritardo salvataggio automatico','defaultFontSize':'Dimensione carattere editor','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Bozza ripristinata','search':'Cerca','fontFamily':'Carattere editor','fontSystem':'Sistema','fontSerif':'Serif','fontMono':'Monospaziato','lineSpacing':'Interlinea','dashboardOptions':'Personalizzazione dashboard','showWelcomePanel':'Mostra pannello di benvenuto','showQuickActions':'Mostra azioni rapide','showDashboardMetrics':'Mostra metriche dashboard','confirmRecentRemoval':'Conferma rimozione dagli elementi recenti','metricThemes':'Temi','metricLanguages':'Lingue','metricLayout':'Layout','metricPrivacy':'Privacy','activePalette':'Palette attiva','responsiveNavigation':'Navigazione adattiva','rtl':'Da destra a sinistra','ltr':'Da sinistra a destra'},
+    'sv':{'Cool':'Kalla','Nature':'Natur','Warm':'Varma','Minimal':'Minimalistiska','createFirst':'Skapa ditt första dokument','wordCount':'Ordräkning i realtid','smartCaps':'Smart versalisering','openRecentStart':'Öppna senaste vid start','saveDelay':'Fördröjning för autosparande','defaultFontSize':'Teckenstorlek i redigeraren','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Utkast återställt','search':'Sök','fontFamily':'Teckensnitt i redigeraren','fontSystem':'System','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Radavstånd','dashboardOptions':'Anpassa instrumentpanelen','showWelcomePanel':'Visa välkomstpanel','showQuickActions':'Visa snabbåtgärder','showDashboardMetrics':'Visa nyckeltal','confirmRecentRemoval':'Bekräfta innan objekt tas bort från senaste','metricThemes':'Teman','metricLanguages':'Språk','metricLayout':'Layout','metricPrivacy':'Sekretess','activePalette':'Aktiv palett','responsiveNavigation':'Responsiv navigering','rtl':'Höger till vänster','ltr':'Vänster till höger'},
+    'fi':{'Cool':'Viileät','Nature':'Luonto','Warm':'Lämpimät','Minimal':'Minimalistiset','createFirst':'Luo ensimmäinen asiakirjasi','wordCount':'Reaaliaikainen sanalaskuri','smartCaps':'Älykäs isojen kirjainten käyttö','openRecentStart':'Avaa viimeisimmät käynnistyksessä','saveDelay':'Automaattitallennuksen viive','defaultFontSize':'Muokkaimen fonttikoko','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Luonnos palautettu','search':'Hae','fontFamily':'Muokkaimen fontti','fontSystem':'Järjestelmä','fontSerif':'Serif','fontMono':'Tasavälinen','lineSpacing':'Riviväli','dashboardOptions':'Kojelaudan mukautus','showWelcomePanel':'Näytä tervetulopaneeli','showQuickActions':'Näytä pikatoiminnot','showDashboardMetrics':'Näytä kojelaudan mittarit','confirmRecentRemoval':'Vahvista ennen poistamista viimeisistä','metricThemes':'Teemat','metricLanguages':'Kielet','metricLayout':'Asettelu','metricPrivacy':'Tietosuoja','activePalette':'Aktiivinen paletti','responsiveNavigation':'Mukautuva navigointi','rtl':'Oikealta vasemmalle','ltr':'Vasemmalta oikealle'},
+    'no':{'Cool':'Kalde','Nature':'Natur','Warm':'Varme','Minimal':'Minimalistiske','createFirst':'Opprett ditt første dokument','wordCount':'Løpende ordtelling','smartCaps':'Smart bruk av store bokstaver','openRecentStart':'Åpne nylige ved oppstart','saveDelay':'Forsinkelse for automatisk lagring','defaultFontSize':'Skriftstørrelse i editor','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Utkast gjenopprettet','search':'Søk','fontFamily':'Skrifttype i editor','fontSystem':'System','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Linjeavstand','dashboardOptions':'Tilpass oversikten','showWelcomePanel':'Vis velkomstpanel','showQuickActions':'Vis hurtighandlinger','showDashboardMetrics':'Vis oversiktstall','confirmRecentRemoval':'Bekreft før nylige elementer fjernes','metricThemes':'Temaer','metricLanguages':'Språk','metricLayout':'Oppsett','metricPrivacy':'Personvern','activePalette':'Aktiv palett','responsiveNavigation':'Responsiv navigasjon','rtl':'Høyre til venstre','ltr':'Venstre til høyre'},
+    'is':{'Cool':'Kaldir','Nature':'Náttúra','Warm':'Hlýir','Minimal':'Einfaldir','createFirst':'Búðu til fyrsta skjalið','wordCount':'Orðatalning í rauntíma','smartCaps':'Sjálfvirkir hástafir','openRecentStart':'Opna nýleg skjöl við ræsingu','saveDelay':'Töf á sjálfvirkri vistun','defaultFontSize':'Leturstærð ritils','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Drög endurheimt','search':'Leita','fontFamily':'Letur ritils','fontSystem':'Kerfisletur','fontSerif':'Serif','fontMono':'Einbreitt','lineSpacing':'Línubil','dashboardOptions':'Sérsníða mælaborð','showWelcomePanel':'Sýna kveðjuspjald','showQuickActions':'Sýna flýtiaðgerðir','showDashboardMetrics':'Sýna tölur mælaborðs','confirmRecentRemoval':'Staðfesta áður en nýleg atriði eru fjarlægð','metricThemes':'Þemu','metricLanguages':'Tungumál','metricLayout':'Skipulag','metricPrivacy':'Persónuvernd','activePalette':'Virkt litasafn','responsiveNavigation':'Aðlögunarhæf leiðsögn','rtl':'Hægri til vinstri','ltr':'Vinstri til hægri'},
+    'el':{'Cool':'Ψυχρά','Nature':'Φύση','Warm':'Θερμά','Minimal':'Μινιμαλιστικά','createFirst':'Δημιουργήστε το πρώτο έγγραφο','wordCount':'Ζωντανή καταμέτρηση λέξεων','smartCaps':'Έξυπνα κεφαλαία','openRecentStart':'Άνοιγμα πρόσφατων κατά την εκκίνηση','saveDelay':'Καθυστέρηση αυτόματης αποθήκευσης','defaultFontSize':'Μέγεθος γραμματοσειράς επεξεργαστή','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','restored':'Το πρόχειρο ανακτήθηκε','search':'Αναζήτηση','fontFamily':'Γραμματοσειρά επεξεργαστή','fontSystem':'Σύστημα','fontSerif':'Serif','fontMono':'Monospace','lineSpacing':'Διάστιχο','dashboardOptions':'Προσαρμογή πίνακα','showWelcomePanel':'Εμφάνιση πίνακα καλωσορίσματος','showQuickActions':'Εμφάνιση γρήγορων ενεργειών','showDashboardMetrics':'Εμφάνιση μετρικών','confirmRecentRemoval':'Επιβεβαίωση πριν από αφαίρεση πρόσφατων','metricThemes':'Θέματα','metricLanguages':'Γλώσσες','metricLayout':'Διάταξη','metricPrivacy':'Απόρρητο','activePalette':'Ενεργή παλέτα','responsiveNavigation':'Προσαρμοστική πλοήγηση','rtl':'Δεξιά προς αριστερά','ltr':'Αριστερά προς δεξιά'},
+  };
+
   static String text(Locale locale,String key){
     final table=switch(locale.languageCode){
       'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,'da'=>da,'hi'=>hi,'he'=>he,'it'=>it,'sv'=>sv,'fi'=>fi,'no'=>no,'is'=>islandic,'el'=>el,_=>en};
-    return table[key]??en[key]??key;
+    return table[key]??extra[locale.languageCode]?[key]??en[key]??extra['en']?[key]??key;
   }
   static bool rtl(Locale l)=>const {'fa','ar','he'}.contains(l.languageCode);
 }class ParinOfficeApp extends StatefulWidget {
@@ -425,7 +548,7 @@ class Dashboard extends StatelessWidget {
         return ListView(
           padding:const EdgeInsets.fromLTRB(20,18,20,30),
           children:[
-            Container(
+            if(state.showWelcomePanel) Container(
               padding:const EdgeInsets.all(24),
               decoration:BoxDecoration(
                 gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[
@@ -437,7 +560,7 @@ class Dashboard extends StatelessWidget {
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),
                   decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(24),borderRadius:BorderRadius.circular(50)),
-                  child:Text('YOUR WORKSPACE',style:TextStyle(color:theme.colorScheme.primary,fontSize:11,letterSpacing:1.2,fontWeight:FontWeight.w900))),
+                  child:Text(t('workspace').toUpperCase(),style:TextStyle(color:theme.colorScheme.primary,fontSize:11,letterSpacing:1.2,fontWeight:FontWeight.w900))),
                 const SizedBox(height:16),
                 Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
                   const BrandMark(size:52),const SizedBox(width:14),
@@ -454,9 +577,9 @@ class Dashboard extends StatelessWidget {
                 ])
               ])),
             const SizedBox(height:24),
-            Row(children:[
+            if(state.showQuickActions) Row(children:[
               Expanded(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
-              Text('04 FORMATS',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:1,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
+              Text('PDF · DOCX · PPTX · XLSX',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:0.5,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
             ]),
             const SizedBox(height:12),
             GridView.builder(
@@ -472,17 +595,17 @@ class Dashboard extends StatelessWidget {
             const SizedBox(height:23),
             Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:11),
-            Wrap(spacing:9,runSpacing:9,children:[
+            if(state.showQuickActions) Wrap(spacing:9,runSpacing:9,children:[
               ActionChip(avatar:const Icon(Icons.folder_open_rounded,size:18),label:Text(t('open')),onPressed:()=>openFile(context)),
               ActionChip(avatar:const Icon(Icons.palette_outlined,size:18),label:Text(t('themes')),onPressed:openSettings),
               ActionChip(avatar:const Icon(Icons.remove_red_eye_outlined,size:18),label:Text(t('blue')),onPressed:openSettings)
             ]),
             const SizedBox(height:24),
-            Wrap(spacing:12,runSpacing:12,children:[
-              const _Metric(Icons.palette_outlined,'Themes','128 palettes'),
-              const _Metric(Icons.translate_rounded,'Languages','16 locales'),
-              const _Metric(Icons.devices_rounded,'Layout','Phone + tablet'),
-              const _Metric(Icons.shield_outlined,'Privacy','Local controls')
+            if(state.showDashboardMetrics) Wrap(spacing:12,runSpacing:12,children:[
+              _Metric(Icons.palette_outlined,L10n.text(state.locale,'metricThemes'),'128 palettes'),
+              _Metric(Icons.translate_rounded,L10n.text(state.locale,'metricLanguages'),'16 locales'),
+              _Metric(Icons.devices_rounded,L10n.text(state.locale,'metricLayout'),'Phone + tablet'),
+              _Metric(Icons.shield_outlined,L10n.text(state.locale,'metricPrivacy'),'Local controls')
             ])
           ]);
       }));
@@ -587,7 +710,7 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
         const SizedBox(height:13),
         TextField(controller:bodyController,minLines:widget.kind==OfficeKind.excel?9:12,maxLines:24,keyboardType:TextInputType.multiline,
           textCapitalization:widget.state.smartCapitalization?TextCapitalization.sentences:TextCapitalization.none,
-          style:TextStyle(fontSize:widget.state.defaultFontSize),autocorrect:widget.state.spellCheck,
+          style:TextStyle(fontSize:widget.state.defaultFontSize,height:widget.state.lineSpacing,fontFamily:switch(widget.state.editorFontFamily){'serif'=>'serif','monospace'=>'monospace',_=>null}),autocorrect:widget.state.spellCheck,
           decoration:InputDecoration(alignLabelWithHint:true,labelText:widget.kind==OfficeKind.excel?'Sheet data (CSV)':t('content'),
             hintText:widget.kind==OfficeKind.excel?'Product,Quantity,Price\nNotebook,4,5.99\nPen,12,1.50':'Write your content here…',
             helperText:widget.kind==OfficeKind.excel?'Put each row on a new line; separate columns with commas.':widget.kind==OfficeKind.powerpoint?'The subtitle appears below the title on the first slide.':'Your content will be packaged into a real .${widget.kind.extension} file.',
@@ -725,22 +848,22 @@ class WorkspaceHome extends StatelessWidget {
   @override Widget build(BuildContext context) {
     final theme=Theme.of(context);
     final cards=<(IconData,String,String,VoidCallback)>[
-      (Icons.note_add_outlined,'Create a document','PDF, Word, PowerPoint and Excel',()=>showModalBottomSheet<void>(
+      (Icons.note_add_outlined,t('create'), 'PDF · DOCX · PPTX · XLSX',()=>showModalBottomSheet<void>(
         context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:OfficeKind.values.map((kind)=>ListTile(
           leading:Icon(kind.icon,color:kind.color),title:Text(kind.label),subtitle:Text(kind.description),
           onTap:(){Navigator.pop(ctx);Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>NewDocumentPage(kind:kind,state:state)));})).toList())))),
-      (Icons.palette_outlined,'Theme studio','128 coordinated color palettes',openSettings),
-      (Icons.remove_red_eye_outlined,'Reading comfort','Optional blue-light filter',openSettings),
-      (Icons.translate_rounded,'Language and layout','Locale-aware layout and RTL support',openSettings),
-      (Icons.shield_outlined,'Privacy controls','Local drafts and recent-document settings',openSettings),
-      (Icons.accessibility_new_rounded,'Accessibility','Text scaling and contrast controls',openSettings),
+      (Icons.palette_outlined,t('themes'),t('paletteHint'),openSettings),
+      (Icons.remove_red_eye_outlined,t('blue'),t('blueSub'),openSettings),
+      (Icons.translate_rounded,t('language'),t('responsiveNavigation'),openSettings),
+      (Icons.shield_outlined,t('security'),t('keepRecent'),openSettings),
+      (Icons.accessibility_new_rounded,t('accessibility'),t('textScale')+' · '+t('contrast'),openSettings),
     ];
     return Scaffold(
       appBar:AppBar(title:Text(L10n.text(state.locale,'workspace'))),
       body:ListView(padding:const EdgeInsets.all(20),children:[
-        Text('A toolkit that stays out of your way',style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+        Text(t('workspace'),style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
         const SizedBox(height:8),
-        Text('Shortcuts, appearance and preferences in an adaptive workspace.',style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
+        Text(t('welcomeSub'),style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
         const SizedBox(height:22),
         if(state.showGrid)
           LayoutBuilder(builder:(context,c){
@@ -882,10 +1005,22 @@ class _SettingsPageState extends State<SettingsPage> {
       _switchRow(state,'haptics',t('haptics'),'Use touch feedback for selection and save.',icon:Icons.vibration_rounded),
       _switchRow(state,'compact',t('compact'),'Reduce toolbar spacing.',icon:Icons.view_compact_alt_outlined),
       _switchRow(state,'keepRecent',t('keepRecent'),'Keep up to 20 file names on this device.',icon:Icons.history_toggle_off_rounded),
+      _switchRow(state,'showWelcomePanel',t('showWelcomePanel'),'Customize the first screen.',icon:Icons.dashboard_customize_outlined),
+      _switchRow(state,'showQuickActions',t('showQuickActions'),'Show shortcuts below the format cards.',icon:Icons.bolt_outlined),
+      _switchRow(state,'showDashboardMetrics',t('showDashboardMetrics'),'Show theme, locale, layout and privacy summaries.',icon:Icons.insights_outlined),
+      _switchRow(state,'confirmRecentRemoval',t('confirmRecentRemoval'),'Ask before removing an item from the recent list.',icon:Icons.delete_outline_rounded),
     ]);
 
   Widget _editor(BuildContext context,AppState state,String Function(String) t)=>_section(
     t('editor'),'Editing and canvas preferences',Icons.edit_note_rounded,[
+      Padding(padding:const EdgeInsets.fromLTRB(10,8,10,4),child:Column(children:[
+        DropdownButtonFormField<String>(value:state.editorFontFamily,isExpanded:true,decoration:InputDecoration(labelText:t('fontFamily'),prefixIcon:const Icon(Icons.font_download_outlined)),
+          items:[DropdownMenuItem(value:'system',child:Text(t('fontSystem'))),DropdownMenuItem(value:'serif',child:Text(t('fontSerif'))),DropdownMenuItem(value:'monospace',child:Text(t('fontMono')))],
+          onChanged:(value){if(value!=null)state.setEditorFontFamily(value);}),
+        const SizedBox(height:10),
+        Row(children:[Expanded(child:Text(t('lineSpacing'),style:const TextStyle(fontWeight:FontWeight.w700))),Text(state.lineSpacing.toStringAsFixed(2)+'×')]),
+        Slider(value:state.lineSpacing,min:1,max:2,divisions:10,onChanged:state.setLineSpacing),
+      ])),
       _switchRow(state,'spellCheck',t('spell'),'Enable keyboard autocorrect in the composing field.',icon:Icons.spellcheck_rounded),
       _switchRow(state,'showGrid',t('grid'),'Remember the grid preference for workspace tools.',icon:Icons.grid_on_rounded),
       _switchRow(state,'focusMode',t('focus'),'Use a less distracting composition canvas.',icon:Icons.center_focus_strong_rounded),
@@ -914,7 +1049,7 @@ class _SettingsPageState extends State<SettingsPage> {
       Padding(padding:const EdgeInsets.fromLTRB(10,6,10,4),child:Column(children:[
         Row(children:[Expanded(child:Text(t('blueStrength'),style:const TextStyle(fontWeight:FontWeight.w700))),
           Text((state.blueStrength*100).round().toString()+'%')]),
-        Slider(value:state.blueStrength,min:0,max:1,divisions:20,onChanged:state.setBlueStrength),
+        Slider(value:state.blueStrength,min:0,max:1,divisions:20,onChanged:state.blueLightFilter?state.setBlueStrength:null),
         Row(children:[Expanded(child:Text(t('textScale'),style:const TextStyle(fontWeight:FontWeight.w700))),
           Text((state.textScale*100).round().toString()+'%')]),
         Slider(value:state.textScale,min:0.85,max:1.35,divisions:10,onChanged:state.setTextScale)

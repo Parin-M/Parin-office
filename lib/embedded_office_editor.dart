@@ -5,6 +5,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:quds_office_editor/quds_office_editor.dart';
 import 'help_center.dart';
+import 'font_library.dart';
+import 'package:printing/printing.dart';
 
 /// On-device OOXML editor. All document bytes stay in this process; no
 /// network endpoint, conversion service, or account is needed to edit files.
@@ -35,6 +37,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
   String _ribbonTab = 'Home';
   String? _error;
   String _progress = 'Opening document locally…';
+  List<String> _customFontFamilies = <String>[];
 
   String get _extension => widget.fileName.split('.').last.toLowerCase();
   bool get _isWord => _word != null;
@@ -98,11 +101,51 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     return _slides;
   }
 
+  Future<void> _refreshCustomFonts() async {
+    final fonts = await UserFontLibrary.families();
+    if (mounted) setState(() => _customFontFamilies = fonts);
+  }
+
+  Future<void> _openFontLibrary() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const FontLibraryPage()));
+    await _refreshCustomFonts();
+  }
+
+  Future<void> _printDocument() async {
+    final controller = _controller;
+    if (controller == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final officeBytes = await controller.saveBytesAsync();
+      final pdfBytes = await Future<Uint8List>.sync(
+        () => OfficePdfExport.fromBytes(officeBytes, title: widget.fileName),
+      );
+      final completed = await Printing.layoutPdf(
+        name: widget.fileName,
+        onLayout: (_) async => pdfBytes,
+      );
+      if (mounted && !completed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('The print dialog was closed without printing.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not print document: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
+    unawaited(_refreshCustomFonts());
     final direction = Directionality.of(context);
     final theme = Theme.of(context).brightness == Brightness.dark
         ? OfficeTheme.dark
@@ -361,7 +404,10 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
         await _shareAsPdf();
         break;
       case 'print':
-        if (controller.canPrint) controller.requestPrint();
+        await _printDocument();
+        break;
+      case 'addFont':
+        await _openFontLibrary();
         break;
       case 'undo':
         controller.undo();
@@ -388,7 +434,8 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
         _formatRun(action);
         break;
       case 'font':
-        await _chooseFontOrSize('Font family', const ['Arial', 'Aptos', 'Calibri', 'Times New Roman', 'Courier New'],
+        final customFonts = await UserFontLibrary.families();
+        await _chooseFontOrSize('Font family', <String>['Arial', 'Aptos', 'Calibri', 'Times New Roman', 'Courier New', ...customFonts],
             (v) => _formatRun('font', v));
         break;
       case 'fontSize':
@@ -856,7 +903,9 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(4),
                 onTap: () => setState(() => _ribbonTab = tab),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: _ribbonTab == tab ? theme.colorScheme.primary.withAlpha(20) : Colors.transparent,
@@ -954,7 +1003,8 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     final result = <Widget>[
       _toolButton('Undo', Icons.undo_rounded, controller.canUndo ? () => _executeAction('undo') : null),
       _toolButton('Redo', Icons.redo_rounded, controller.canRedo ? () => _executeAction('redo') : null),
-      _toolButton('Print', Icons.print_outlined, controller.canPrint ? () => _executeAction('print') : null),
+      _toolButton('Print', Icons.print_outlined, () => _executeAction('print')),
+      _toolButton('Add font to library', Icons.add_circle_outline_rounded, () => _executeAction('addFont')),
       _toolDivider(),
       _toolButton('Find', Icons.search_rounded, () => _executeAction('find')),
       _toolButton('Replace', Icons.find_replace_rounded, () => _executeAction('replace')),
@@ -963,8 +1013,8 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       result.addAll([
         _toolDivider(),
         _dropdownTool('Font family', _word!.activeRunProps.asciiFont,
-          const ['Arial', 'Aptos', 'Calibri', 'Times New Roman', 'Courier New'],
-          (v) => _formatRun('font', v), width: 118),
+          <String>['Arial', 'Aptos', 'Calibri', 'Times New Roman', 'Courier New', ..._customFontFamilies],
+          (v) => _formatRun('font', v), width: 140),
         _dropdownTool('Font size', _word!.activeRunProps.fontSizePoints.round().toString(),
           const ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '36', '48', '72'],
           (v) => _formatRun('size', v), width: 58),
@@ -1105,7 +1155,16 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
     ),
-    child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: _toolbarActions())),
+    child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 240),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: SingleChildScrollView(
+        key: ValueKey<String>('$_extension-$_ribbonTab'),
+        scrollDirection: Axis.horizontal,
+        child: Row(children: _toolbarActions()),
+      ),
+    ),
   );
 
   Widget _sideEntry(String label, IconData icon, VoidCallback action) {

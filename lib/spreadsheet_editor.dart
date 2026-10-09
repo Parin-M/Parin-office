@@ -160,18 +160,10 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
 
   void _styleSelected({bool? bold, String? fill}) {
     final cell = _sheet.cell(_selectedIndex);
-    final old = cell.cellStyle;
-    cell.cellStyle = xls.CellStyle(
-      bold: bold ?? old?.bold ?? false,
-      italic: old?.italic ?? false,
-      underline: old?.underline ?? false,
-      fontSize: old?.fontSize ?? 11,
-      fontColorHex: old?.fontColorHex,
-      backgroundColorHex: fill == null ? old?.backgroundColorHex : xls.ExcelColor.fromHexString(fill),
-      horizontalAlign: old?.horizontalAlign ?? xls.HorizontalAlign.Left,
-      verticalAlign: old?.verticalAlign ?? xls.VerticalAlign.Center,
-      wrapText: old?.wrapText ?? false,
-      numberFormat: old?.numberFormat,
+    final previous = cell.cellStyle ?? xls.CellStyle();
+    cell.cellStyle = previous.copyWith(
+      boldVal: bold ?? previous.bold,
+      backgroundColorHexVal: fill == null ? null : xls.ExcelColor.fromHexString(fill),
     );
     setState(() {});
   }

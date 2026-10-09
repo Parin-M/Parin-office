@@ -578,7 +578,7 @@ class Dashboard extends StatelessWidget {
               ])),
             if(state.showWelcomePanel) const SizedBox(height:24),
             if(state.showQuickActions) Row(children:[
-              Expanded(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
+              Expanded(child:Text(t('newDoc'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
               Text('PDF · DOCX · PPTX · XLSX',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:0.5,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
             ]),
             const SizedBox(height:12),
@@ -592,9 +592,9 @@ class Dashboard extends StatelessWidget {
                 final kind=OfficeKind.values[i];
                 return _DocTile(kind.label,kind.description,kind.icon,kind.color,()=>create(context,kind));
               }),
-            const SizedBox(height:23),
-            Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
-            const SizedBox(height:11),
+            if(state.showQuickActions) const SizedBox(height:23),
+            if(state.showQuickActions) Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
+            if(state.showQuickActions) const SizedBox(height:11),
             if(state.showQuickActions) Wrap(spacing:9,runSpacing:9,children:[
               ActionChip(avatar:const Icon(Icons.folder_open_rounded,size:18),label:Text(t('open')),onPressed:()=>openFile(context)),
               ActionChip(avatar:const Icon(Icons.palette_outlined,size:18),label:Text(t('themes')),onPressed:openSettings),

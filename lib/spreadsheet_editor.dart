@@ -53,9 +53,17 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
     return '$name${row + 1}';
   }
 
+  String _plainText(xls.TextSpan span) {
+    final buffer = StringBuffer(span.text ?? '');
+    for (final child in span.children ?? const <xls.TextSpan>[]) {
+      buffer.write(_plainText(child));
+    }
+    return buffer.toString();
+  }
+
   String _valueText(dynamic value) {
     if (value == null) return '';
-    if (value is xls.TextCellValue) return value.value.toPlainText();
+    if (value is xls.TextCellValue) return _plainText(value.value);
     if (value is xls.IntCellValue) return value.value.toString();
     if (value is xls.DoubleCellValue) return value.value.toString();
     if (value is xls.BoolCellValue) return value.value.toString();
@@ -162,7 +170,7 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
     final cell = _sheet.cell(_selectedIndex);
     final previous = cell.cellStyle ?? xls.CellStyle();
     cell.cellStyle = previous.copyWith(
-      boldVal: bold ?? previous.bold,
+      boldVal: bold ?? previous.isBold,
       backgroundColorHexVal: fill == null ? null : xls.ExcelColor.fromHexString(fill),
     );
     setState(() {});

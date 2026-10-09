@@ -11,6 +11,9 @@ import 'word_editor.dart';
 import 'spreadsheet_editor.dart';
 import 'presentation_editor.dart';
 import 'embedded_office_editor.dart';
+import 'help_center.dart';
+import 'pdf_security_tools.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:quds_office_editor/quds_office_editor.dart' show OfficeHostFonts;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
@@ -19,7 +22,7 @@ import 'document_factory.dart';
 
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); await OfficeHostFonts.ensureRegistered(); runApp(const ParinOfficeApp()); }
 
-enum AppearanceMode { system, light, dark, amoled }
+enum AppearanceMode { system, light, liquidGlass, dark, amoled }
 
 class ThemePreset {
   const ThemePreset({required this.name,required this.primary,required this.secondary,required this.family});
@@ -46,7 +49,7 @@ class ThemeCatalog {
     final inkContrast=(luminance+0.05)/(ink.computeLuminance()+0.05);
     return inkContrast>=whiteContrast?ink:Colors.white;
   }
-  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false}){
+  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false,bool liquidGlass=false,bool metro=true}){
     final dark=brightness==Brightness.dark;
     final source=HSLColor.fromColor(preset.primary);
     final sourceSecondary=HSLColor.fromColor(preset.secondary);
@@ -57,11 +60,11 @@ class ThemeCatalog {
     final secondary=dark
       ?sourceSecondary.withLightness(0.73).toColor()
       :sourceSecondary.withLightness(sourceSecondary.lightness.clamp(0.34,0.44).toDouble()).toColor();
-    final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF0B0F16):const Color(0xFFF5F7FB);
-    final surface=amoled?const Color(0xFF080B11):dark?const Color(0xFF141923):Colors.white;
-    final raised=amoled?const Color(0xFF10141D):dark?const Color(0xFF1C2330):Colors.white;
-    final field=amoled?const Color(0xFF10141D):dark?const Color(0xFF1A202B):const Color(0xFFF1F4F9);
-    final outline=dark?const Color(0xFF4B5565):const Color(0xFFD6DCE7);
+    final canvas=amoled?const Color(0xFF000000):liquidGlass?const Color(0xFFE5ECF5):dark?const Color(0xFF0B0F16):const Color(0xFFF5F7FB);
+    final surface=amoled?const Color(0xFF080B11):liquidGlass?const Color(0xDFFFFFFF):dark?const Color(0xFF141923):Colors.white;
+    final raised=amoled?const Color(0xFF10141D):liquidGlass?const Color(0xD9FFFFFF):dark?const Color(0xFF1C2330):Colors.white;
+    final field=amoled?const Color(0xFF10141D):liquidGlass?const Color(0xCFFFFFFF):dark?const Color(0xFF1A202B):const Color(0xFFF1F4F9);
+    final outline=dark?const Color(0xFF4B5565):liquidGlass?const Color(0x99FFFFFF):const Color(0xFFD6DCE7);
     final outlineVariant=dark?const Color(0xFF303847):const Color(0xFFE2E7EF);
     final scheme=ColorScheme.fromSeed(
       seedColor:primary,
@@ -94,10 +97,10 @@ class ThemeCatalog {
       canvasColor:surface,
       cardTheme:CardThemeData(
         color:raised,
-        elevation:0,
+        elevation:liquidGlass?2:0,
         margin:EdgeInsets.zero,
         shape:RoundedRectangleBorder(
-          borderRadius:BorderRadius.circular(18),
+          borderRadius:BorderRadius.circular(metro?7:18),
           side:BorderSide(color:outlineVariant),
         ),
       ),
@@ -114,30 +117,31 @@ class ThemeCatalog {
         filled:true,
         fillColor:field,
         contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),
-        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
-        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
-        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:primary,width:1.6)),
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:outlineVariant)),
+        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:outlineVariant)),
+        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:primary,width:1.6)),
       ),
       filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
         foregroundColor:scheme.onPrimary,
         backgroundColor:primary,
         minimumSize:const Size(44,46),
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:15)),
         textStyle:const TextStyle(fontWeight:FontWeight.w800),
       )),
       outlinedButtonTheme:OutlinedButtonThemeData(style:OutlinedButton.styleFrom(
         minimumSize:const Size(44,44),
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:15)),
         side:BorderSide(color:outline),
       )),
       chipTheme:ChipThemeData(
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:13)),
         side:BorderSide(color:outlineVariant),
         padding:const EdgeInsets.symmetric(horizontal:6,vertical:5),
       ),
       navigationBarTheme:NavigationBarThemeData(
         backgroundColor:surface,
         indicatorColor:primary.withAlpha(dark?56:28),
+        indicatorShape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:16)),
         elevation:0,
         labelTextStyle:WidgetStateProperty.resolveWith((states)=>TextStyle(
           fontSize:12,
@@ -253,7 +257,7 @@ class AppState extends ChangeNotifier {
     for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent','showWordCount','smartCapitalization','openRecentOnStart','showWelcomePanel','showQuickActions','showDashboardMetrics','confirmRecentRemoval','editorFontFamily','lineSpacing','autoSaveDelay','defaultFontSize']){await p.remove(key);}
     notifyListeners();
   }
-  Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
+  Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,'designStyle':'Metro UI',
     'textScale':textScale,'blueLightStrength':blueStrength,'editorFontFamily':editorFontFamily,'lineSpacing':lineSpacing,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
     'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
     if(diagnostics) 'diagnosticsReport':{'build':'0.10','recentDocumentCount':recent.length,'draftRecovery':autoRecovery},
@@ -452,9 +456,9 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
       localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate,FlutterQuillLocalizations.delegate],
       localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
-      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon),
+      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon,liquidGlass:state.mode==AppearanceMode.liquidGlass),
       darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon),
-      themeMode:state.mode==AppearanceMode.system?ThemeMode.system:state.mode==AppearanceMode.light?ThemeMode.light:ThemeMode.dark,
+      themeMode:state.mode==AppearanceMode.system?ThemeMode.system:(state.mode==AppearanceMode.dark||state.mode==AppearanceMode.amoled)?ThemeMode.dark:ThemeMode.light,
       builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
         child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
           child:Stack(fit:StackFit.expand,children:[child??const SizedBox.shrink(),
@@ -483,11 +487,10 @@ class _ShellState extends State<Shell> {
     final t=(String key)=>L10n.text(widget.state.locale,key);
     final items=<(IconData,String)>[
       (Icons.space_dashboard_rounded,t('home')),(Icons.history_rounded,t('recent')),
-      (Icons.grid_view_rounded,t('workspace')),(Icons.tune_rounded,t('settings'))];
+      (Icons.tune_rounded,t('settings'))];
     final pages=<Widget>[
-      Dashboard(state:widget.state,openSettings:()=>setState(()=>index=3)),
-      RecentPage(state:widget.state),WorkspaceHome(state:widget.state,openSettings:()=>setState(()=>index=3)),
-      SettingsPage(state:widget.state)];
+      Dashboard(state:widget.state,openSettings:()=>setState(()=>index=2)),
+      RecentPage(state:widget.state),SettingsPage(state:widget.state)];
     return LayoutBuilder(builder:(context,c) {
       final desktop=c.maxWidth>=900,extended=c.maxWidth>=1180;
       final page=AnimatedSwitcher(duration:widget.state.animations?const Duration(milliseconds:220):Duration.zero,
@@ -973,6 +976,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final modes=<(AppearanceMode,String,IconData)>[
       (AppearanceMode.system,t('system'),Icons.settings_brightness_rounded),
       (AppearanceMode.light,t('light'),Icons.light_mode_outlined),
+      (AppearanceMode.liquidGlass,state.locale.languageCode=='fa'?'لیکویید گلس':'Liquid glass',Icons.blur_on_rounded),
       (AppearanceMode.dark,t('dark'),Icons.dark_mode_outlined),
       (AppearanceMode.amoled,t('amoled'),Icons.contrast_rounded)];
     final presets=ThemeCatalog.presets.where((p){

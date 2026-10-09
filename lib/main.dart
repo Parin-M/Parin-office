@@ -868,6 +868,7 @@ class WorkspaceHome extends StatelessWidget {
   }
 
   @override Widget build(BuildContext context) {
+    final t=(String key)=>L10n.text(state.locale,key);
     final theme=Theme.of(context);
     final cards=<(IconData,String,String,VoidCallback)>[
       (Icons.note_add_outlined,t('create'), 'PDF · DOCX · PPTX · XLSX',()=>showModalBottomSheet<void>(

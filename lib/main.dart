@@ -10,12 +10,14 @@ import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations
 import 'word_editor.dart';
 import 'spreadsheet_editor.dart';
 import 'presentation_editor.dart';
+import 'embedded_office_editor.dart';
+import 'package:quds_office_editor/quds_office_editor.dart' show OfficeHostFonts;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'document_factory.dart';
 
-Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); runApp(const ParinOfficeApp()); }
+Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); await OfficeHostFonts.ensureRegistered(); runApp(const ParinOfficeApp()); }
 
 enum AppearanceMode { system, light, dark, amoled }
 
@@ -755,8 +757,9 @@ class PdfPage extends StatelessWidget {
 Widget officeEditorPage(Uint8List bytes,String name) {
   final ext=name.split('.').last.toLowerCase();
   return switch(ext) {
-    'xlsx'||'xls'=>SpreadsheetEditorPage(bytes:bytes,fileName:name),
-    'pptx'||'ppt'=>PresentationEditorPage(bytes:bytes,fileName:name),
+    'docx'||'xlsx'||'pptx'=>EmbeddedOfficeEditorPage(bytes:bytes,fileName:name),
+    'xls'=>SpreadsheetEditorPage(bytes:bytes,fileName:name),
+    'ppt'=>PresentationEditorPage(bytes:bytes,fileName:name),
     _=>WordEditorPage(bytes:bytes,fileName:name),
   };
 }

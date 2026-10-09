@@ -78,26 +78,44 @@ def polygon(canvas: bytearray, points: list[tuple[int, int]], color: tuple[int, 
                 blend(canvas, x, y, color)
 
 
+def erase_rect(canvas: bytearray, x: int, y: int, w: int, h: int) -> None:
+    """Clear a transparent cut-out; used to make a true monochrome glyph."""
+    x0, y0, x1, y1 = max(0, x), max(0, y), min(SIZE, x + w), min(SIZE, y + h)
+    for py in range(y0, y1):
+        start = (py * SIZE + x0) * 4
+        end = (py * SIZE + x1) * 4
+        canvas[start:end] = bytes(end - start)
+
+
 def paint_mark(canvas: bytearray, foreground: bool = False, monochrome: bool = False) -> None:
     white = (255, 255, 255, 255)
     blue = (42, 103, 244, 255)
     muted = (200, 211, 232, 255)
     mint = (98, 232, 211, 255)
+    if foreground and monochrome:
+        # Material You recolors every opaque pixel to one tint. Draw only a
+        # recognizable, connected P-shaped mark on transparency—never a
+        # filled white page with details that disappear when tinted.
+        rounded_rect(canvas, 280, 230, 100, 540, 34, white)
+        rounded_rect(canvas, 330, 230, 410, 100, 34, white)
+        rounded_rect(canvas, 640, 290, 100, 225, 34, white)
+        rounded_rect(canvas, 330, 420, 360, 100, 34, white)
+        # Punch out the bowl of the P so the silhouette remains legible.
+        erase_rect(canvas, 390, 330, 250, 90)
+        return
     if foreground:
-        rounded_rect(canvas, 238, 150, 548, 726, 70, white if not monochrome else (255, 255, 255, 255))
-        polygon(canvas, [(620, 150), (786, 316), (620, 316)], (221, 232, 255, 255) if not monochrome else white)
-        main = white if monochrome else blue
-        inner = (255, 255, 255, 255)
-        rounded_rect(canvas, 326, 380, 68, 250, 20, main)
-        rounded_rect(canvas, 326, 380, 266, 67, 20, main)
-        rounded_rect(canvas, 326, 474, 226, 62, 20, main)
-        rounded_rect(canvas, 520, 418, 72, 90, 20, main)
-        if not monochrome:
-            rounded_rect(canvas, 400, 448, 128, 30, 10, inner)
-            rounded_rect(canvas, 326, 685, 255, 16, 8, muted)
-            rounded_rect(canvas, 326, 730, 310, 16, 8, muted)
-            rounded_rect(canvas, 326, 775, 190, 16, 8, muted)
-            rounded_rect(canvas, 620, 780, 94, 94, 24, mint)
+        # Keep the full artwork within Android's centered 66% safe zone.
+        rounded_rect(canvas, 270, 190, 484, 644, 58, white)
+        polygon(canvas, [(605, 190), (754, 339), (605, 339)], (221, 232, 255, 255))
+        rounded_rect(canvas, 340, 390, 68, 220, 20, blue)
+        rounded_rect(canvas, 340, 390, 240, 60, 20, blue)
+        rounded_rect(canvas, 340, 475, 205, 56, 20, blue)
+        rounded_rect(canvas, 515, 430, 65, 85, 18, blue)
+        rounded_rect(canvas, 414, 445, 100, 28, 9, white)
+        rounded_rect(canvas, 340, 650, 230, 14, 7, muted)
+        rounded_rect(canvas, 340, 692, 280, 14, 7, muted)
+        rounded_rect(canvas, 340, 734, 180, 14, 7, muted)
+        rounded_rect(canvas, 610, 746, 80, 80, 22, mint)
     else:
         rounded_rect(canvas, 230, 140, 564, 744, 72, white)
         polygon(canvas, [(600, 140), (794, 334), (600, 334)], (226, 236, 255, 255))

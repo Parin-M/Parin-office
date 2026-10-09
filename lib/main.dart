@@ -275,7 +275,7 @@ class Dashboard extends StatelessWidget {
     if(kind==OfficeKind.pdf) {
       Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>PdfPage(bytes:bytes,name:file.name)));
     } else {
-      Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>OfficePage(bytes:bytes,name:file.name)));
+      Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>OfficePage(bytes:bytes,name:file.name,state:state)));
     }
   }
   void create(BuildContext context,OfficeKind kind)=>Navigator.of(context).push(
@@ -453,9 +453,26 @@ class PdfPage extends StatelessWidget {
   @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
 }
 
-class OfficePage extends StatelessWidget{
- const OfficePage({super.key,required this.bytes,required this.name});final Uint8List bytes;final String name;
- @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:OfficeWorkbench(fileName:name));
+class OfficePage extends StatelessWidget {
+  const OfficePage({super.key,required this.bytes,required this.name,required this.state});
+  final Uint8List bytes;
+  final String name;
+  final AppState state;
+  @override Widget build(BuildContext context){
+    final extension=name.split('.').last.toLowerCase();
+    final kind=switch(extension){'pptx'=>OfficeKind.powerpoint,'xlsx'=>OfficeKind.excel,_=>OfficeKind.word};
+    final theme=Theme.of(context);
+    return Scaffold(appBar:AppBar(title:Text(name)),body:Center(
+      child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:620),child:Padding(padding:const EdgeInsets.all(24),child:Column(
+        mainAxisAlignment:MainAxisAlignment.center,children:[
+          Container(width:78,height:78,decoration:BoxDecoration(color:kind.color.withAlpha(25),borderRadius:BorderRadius.circular(24)),child:Icon(kind.icon,color:kind.color,size:40)),
+          const SizedBox(height:20),Text(name,textAlign:TextAlign.center,style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+          const SizedBox(height:10),Text('This build can create starter '+kind.label+' files. Full-fidelity import and editing of existing Office documents is still in development.',
+            textAlign:TextAlign.center,style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.45)),
+          const SizedBox(height:22),FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(
+            builder:(_)=>NewDocumentPage(kind:kind,state:state))),icon:const Icon(Icons.note_add_outlined),label:Text('Create new '+kind.label))
+        ])))));
+  }
 }
 
 class OfficeWorkbench extends StatefulWidget{const OfficeWorkbench({super.key,required this.fileName});final String fileName;@override State<OfficeWorkbench>createState()=>_OfficeWorkbenchState();}

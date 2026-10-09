@@ -220,7 +220,7 @@ class PdfToolsEngine {
             for (var index = 0; index < pages.length; index++)
               if (pages[index].isNotEmpty) 'Page ${index + 1}\n${pages[index]}',
           ].join('\n\n');
-          return OfficeDocumentFactory.create(
+          return await OfficeDocumentFactory.create(
             kind: OfficeKind.word,
             title: baseTitle,
             body: body,
@@ -234,7 +234,7 @@ class PdfToolsEngine {
               if (value.isNotEmpty) rows.add('${index + 1},$value');
             }
           }
-          return OfficeDocumentFactory.create(
+          return await OfficeDocumentFactory.create(
             kind: OfficeKind.excel,
             title: baseTitle,
             body: rows.join('\n'),
@@ -448,17 +448,15 @@ class _PdfToolsPageState extends State<PdfToolsPage> {
     final selection = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
-      allowMultiple: true,
-      withData: true,
     );
-    if (selection == null) return;
+    if (selection.isEmpty) return;
     await _run(
       'Merge PDFs',
       () async {
         final inputs = <Uint8List>[];
         if (_includeCurrent) inputs.add(widget.bytes);
-        for (final file in selection.files) {
-          final selectedBytes = file.bytes ?? await file.readAsBytes();
+        for (final file in selection) {
+          final selectedBytes = await file.readAsBytes();
           inputs.add(selectedBytes);
         }
         if (inputs.length < 2) throw const FormatException('Select at least two PDFs in total.');

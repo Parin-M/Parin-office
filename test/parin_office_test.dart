@@ -13,6 +13,27 @@ void main() {
     expect(ThemeCatalog.presets.map((theme) => theme.family).toSet().length, 16);
   });
 
+  test('Light, dark and AMOLED surfaces remain visually distinct', () {
+    final preset = ThemeCatalog.presets.first;
+    final light = ThemeCatalog.build(preset, Brightness.light, false);
+    final dark = ThemeCatalog.build(preset, Brightness.dark, false);
+    final amoled = ThemeCatalog.build(preset, Brightness.dark, true);
+
+    expect(light.scaffoldBackgroundColor, isNot(dark.scaffoldBackgroundColor));
+    expect(amoled.scaffoldBackgroundColor, const Color(0xFF000000));
+    expect(amoled.cardTheme.color, isNot(amoled.scaffoldBackgroundColor));
+    expect(dark.colorScheme.primary, isNot(preset.primary));
+    expect(dark.colorScheme.onSurface, const Color(0xFFF2F5FA));
+  });
+
+  test('New settings labels resolve for all supported locales', () {
+    for (final locale in L10n.locales) {
+      expect(L10n.text(locale, 'fontFamily'), isNot('fontFamily'));
+      expect(L10n.text(locale, 'showWelcomePanel'), isNot('showWelcomePanel'));
+      expect(L10n.text(locale, 'confirmRecentRemoval'), isNot('confirmRecentRemoval'));
+    }
+  });
+
   test('Parin Office exposes all supported locales', () {
     expect(L10n.locales.length, 16);
     expect(L10n.locales.map((locale) => locale.languageCode), contains('fa'));

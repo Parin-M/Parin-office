@@ -100,7 +100,7 @@ def paint_mark(canvas: bytearray, foreground: bool = False, monochrome: bool = F
         rounded_rect(canvas, 290, 220, 115, 580, 38, white)
         rounded_rect(canvas, 340, 220, 385, 115, 38, white)
         rounded_rect(canvas, 620, 255, 105, 255, 36, white)
-        rounded_rect(canvas, 355, 405, 370, 105, 34, white)
+        rounded_rect(canvas, 355, 405, 370, 125, 34, white)
         # Cut the bowl out of the P while keeping an opaque, single-color silhouette.
         erase_rect(canvas, 405, 335, 215, 70)
         return

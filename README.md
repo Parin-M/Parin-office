@@ -13,11 +13,15 @@ Parin Office is an adaptive Android office workspace built with Flutter for phon
 - Searchable settings with persistent toggles, high contrast, text scale, editor font/line-spacing controls, dashboard personalization, settings export and reset.
 - Local draft recovery, recent-document history, optional confirmation before recent-item removal, and opt-in haptics/animations.
 - PDF creation and the existing PDF editor integration.
-- Starter DOCX, PPTX and XLSX creation using Open XML package parts; spreadsheet entries are created from comma-separated or tab-separated rows.
+- **Word editor:** rich-text editing with bold/italic/underline/strike, font size and color controls, headings, alignment, lists, links, undo/redo, search, find/replace, word count, page size/orientation/margins, focus mode, zoom and DOCX export.
+- **Excel editor:** open XLSX and legacy XLS, edit cells through a grid/formula bar, evaluate formulas, format cell text and fills, find/replace, insert rows/columns, add worksheets, freeze panes, filters, column charts, CSV export and XLSX save.
+- **PowerPoint editor:** extract text from imported PPTX slides into editable title/body fields, create/duplicate/delete/reorder slides, change slide backgrounds and accent colors, choose slide layouts, preview slides and export a multi-slide PPTX.
 
-## Scope notes
+## Scope and import-fidelity notes
 
-The Word, PowerPoint and Excel create actions export starter files using the formats' container structures. This is not yet a full Microsoft Office replacement, and importing/editing every feature in arbitrary existing DOCX/PPTX/XLSX documents remains future work. Cloud sync, app lock, AI/OCR services and advanced formula/revision engines are not presented as working features in this build.
+These are native, offline editing workspaces, not a claim of full Microsoft Office equivalence. Word import currently reconstructs an editable text document from paragraph text, so arbitrary source pictures, embedded objects, tables, comments, tracked changes and complex section formatting are not round-tripped. PowerPoint import extracts slide text and rebuilds a supported title/body slide model; original animations, transitions, speaker notes, media, SmartArt, charts and complex object geometry are not preserved. Excel uses an actual workbook engine with formula evaluation and style editing; unsupported Excel functions or advanced workbook objects may not recalculate or round-trip exactly. Keep a copy of critical originals and verify complex documents in a full office suite before relying on the output.
+
+Cloud sync, app lock, AI/OCR services, VBA/macros, collaborative editing and full-fidelity OOXML round-trip for every feature are not included in this offline build.
 
 The blue-light tint is an optional in-app overlay. It does not change the device display's system-level color temperature, and it can be disabled or set to zero strength.
 

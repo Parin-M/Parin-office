@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:parin_office/document_factory.dart';
 import 'package:parin_office/main.dart';
+import 'package:parin_office/office_editor_codec.dart';
+import 'package:excel_plus/excel_plus.dart' as xls;
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -68,6 +70,66 @@ void main() {
     expect(restored.lineSpacing, closeTo(1.6, 0.001));
     first.dispose();
     restored.dispose();
+  });
+
+  test('Word editor exports formatted DOCX paragraphs', () {
+    final bytes = OfficeEditorCodec.createWordFromDelta(
+      delta: <dynamic>[
+        {'insert': 'A formatted heading\n', 'attributes': {'header': 1}},
+        {'insert': 'Important text', 'attributes': {'bold': true, 'color': '#FF0000'}},
+        {'insert': '\n'},
+      ],
+      pageSize: 'A4',
+      landscape: false,
+      margins: 'Normal',
+    );
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final document = utf8.decode(
+      archive.files.firstWhere((file) => file.name == 'word/document.xml').content as List<int>,
+    );
+    expect(document, contains('A formatted heading'));
+    expect(document, contains('<w:b/>'));
+    expect(document, contains('FF0000'));
+    expect(document, contains('w:pgSz'));
+  });
+
+  test('PowerPoint editor exports multiple editable slides and honors blank layout', () {
+    final bytes = OfficeEditorCodec.createPresentation(
+      title: 'Editable presentation',
+      accentHex: '2869F6',
+      slides: <PresentationSlideDraft>[
+        PresentationSlideDraft(title: 'First slide', body: 'First bullet\n• Key point'),
+        PresentationSlideDraft(title: 'Blank slide', body: 'Must not appear', layout: 'Blank'),
+      ],
+    );
+    final archive = ZipDecoder().decodeBytes(bytes);
+    final names = archive.files.map((file) => file.name).toSet();
+    expect(names, contains('ppt/slides/slide1.xml'));
+    expect(names, contains('ppt/slides/slide2.xml'));
+    final first = utf8.decode(archive.files.firstWhere((file) => file.name == 'ppt/slides/slide1.xml').content as List<int>);
+    final second = utf8.decode(archive.files.firstWhere((file) => file.name == 'ppt/slides/slide2.xml').content as List<int>);
+    expect(first, contains('First slide'));
+    expect(first, contains('Key point'));
+    expect(second, isNot(contains('Must not appear')));
+    expect(OfficeEditorCodec.extractPresentation(bytes), hasLength(2));
+  });
+
+  test('Excel editor engine can edit cells and recalculate formulas', () async {
+    final workbook = xls.Excel.createExcel();
+    final sheet = workbook['Sheet1'];
+    sheet.updateCell(xls.CellIndex.indexByString('A1'), xls.IntCellValue(10));
+    sheet.updateCell(xls.CellIndex.indexByString('A2'), xls.IntCellValue(20));
+    sheet.updateCell(xls.CellIndex.indexByString('A3'), xls.FormulaCellValue('SUM(A1:A2)'));
+    workbook.recalculate();
+    final calculated = sheet.evaluate(xls.CellIndex.indexByString('A3'));
+    expect(calculated, isA<xls.IntCellValue>());
+    expect((calculated as xls.IntCellValue).value, 30);
+
+    final saved = workbook.save();
+    expect(saved, isNotNull);
+    final restored = await xls.Excel.decodeBytesAsync(saved!);
+    expect(restored.tables.keys, contains('Sheet1'));
+    expect(restored['Sheet1'].cell(xls.CellIndex.indexByString('A1')).value, isA<xls.IntCellValue>());
   });
 
   test('Create PDF returns a PDF document', () async {

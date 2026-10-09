@@ -1,333 +1,235 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dart_pdf_editor/dart_pdf_editor.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:intl/intl.dart';
-import 'document_factory.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'document_factory.dart';
 
-void main(){WidgetsFlutterBinding.ensureInitialized();runApp(const ParinOfficeApp());}
+void main() { WidgetsFlutterBinding.ensureInitialized(); runApp(const ParinOfficeApp()); }
 
 enum AppearanceMode { system, light, dark, amoled }
 
 class ThemePreset {
-  const ThemePreset({required this.name, required this.primary, required this.secondary, required this.background, required this.family});
+  const ThemePreset({required this.name,required this.primary,required this.secondary,required this.family});
   final String name;
-  final Color primary, secondary, background;
+  final Color primary,secondary;
   final String family;
 }
-
 class ThemeCatalog {
-  static const families = <String>['Ocean','Arctic','Mint','Forest','Sage','Lime','Sunset','Coral','Rose','Berry','Violet','Indigo','Midnight','Stone','Sand','Mono'];
-  static const hues = <double>[214,194,164,145,112,84,26,8,342,320,276,244,225,210,37,0];
-  static final presets = List<ThemePreset>.generate(128, (i) {
-    final family = i ~/ 8;
-    final variant = i % 8;
-    final neutral = family == 15;
-    final hue = neutral ? 220.0 : (hues[family] + variant * 3.2) % 360;
-    final sat = neutral ? 0.04 : 0.52 + (variant % 3) * 0.07;
-    final light = 0.37 + (variant % 5) * 0.045;
-    final primary = HSLColor.fromAHSL(1, hue, sat, light).toColor();
-    final secondary = HSLColor.fromAHSL(1, (hue + 18) % 360, sat * 0.78, (light + 0.08).clamp(0.0, 1.0)).toColor();
-    return ThemePreset(name: '${families[family]} ${variant + 1}', primary: primary, secondary: secondary,
-      background: HSLColor.fromAHSL(1, hue, 0.03, 0.97).toColor(), family: families[family]);
+  static const families=<String>['Ocean','Arctic','Mint','Forest','Sage','Lime','Sunset','Coral','Rose','Berry','Violet','Indigo','Midnight','Stone','Sand','Mono'];
+  static const hues=<double>[214,194,164,145,112,84,26,8,342,320,276,244,225,210,37,0];
+  static final presets=List<ThemePreset>.generate(128,(i){
+    final f=i~/8, v=i%8, neutral=f==15;
+    final hue=neutral?220.0:(hues[f]+v*3.2)%360;
+    final sat=neutral?0.04:0.52+(v%3)*0.07;
+    final light=0.37+(v%5)*0.045;
+    final primary=HSLColor.fromAHSL(1,hue,sat,light).toColor();
+    final secondary=HSLColor.fromAHSL(1,(hue+18)%360,sat*0.78,(light+0.08).clamp(0.0,1.0)).toColor();
+    return ThemePreset(name:families[f]+' '+(v+1).toString(),primary:primary,secondary:secondary,family:families[f]);
   });
-
-  static ThemeData build(ThemePreset preset, Brightness brightness, bool amoled, {bool highContrast = false}) {
-    final dark = brightness == Brightness.dark;
-    final canvas = amoled ? const Color(0xFF000000) : dark ? const Color(0xFF101116) : const Color(0xFFF5F7FB);
-    final surface = amoled ? const Color(0xFF000000) : dark ? const Color(0xFF191B22) : Colors.white;
-    final raised = amoled ? const Color(0xFF08090D) : dark ? const Color(0xFF20232C) : Colors.white;
-    final scheme = ColorScheme.fromSeed(seedColor: preset.primary, brightness: brightness,
-      contrastLevel: highContrast ? 0.75 : 0).copyWith(
-      primary: preset.primary, secondary: preset.secondary, surface: surface,
-      surfaceContainerLowest: canvas, surfaceContainerLow: raised, surfaceContainer: raised,
-      outline: dark ? const Color(0xFF3D414C) : const Color(0xFFE0E4EC),
-      outlineVariant: dark ? const Color(0xFF2C3039) : const Color(0xFFE9ECF2));
+  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false}){
+    final dark=brightness==Brightness.dark;
+    final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF101116):const Color(0xFFF5F7FB);
+    final surface=amoled?const Color(0xFF000000):dark?const Color(0xFF191B22):Colors.white;
+    final raised=amoled?const Color(0xFF08090D):dark?const Color(0xFF20232C):const Color(0xFFFFFFFF);
+    final scheme=ColorScheme.fromSeed(seedColor:preset.primary,brightness:brightness,contrastLevel:highContrast?0.75:0).copyWith(
+      primary:preset.primary,secondary:preset.secondary,surface:surface,surfaceContainerLowest:canvas,
+      surfaceContainerLow:raised,surfaceContainer:raised,
+      outline:dark?const Color(0xFF3D414C):const Color(0xFFE0E4EC),
+      outlineVariant:dark?const Color(0xFF2C3039):const Color(0xFFE9ECF2));
     return ThemeData(
-      useMaterial3: true, brightness: brightness, colorScheme: scheme,
-      scaffoldBackgroundColor: canvas, canvasColor: surface,
-      cardTheme: CardThemeData(color: surface, elevation: 0, margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: scheme.outlineVariant))),
-      appBarTheme: AppBarTheme(centerTitle: false, elevation: 0, scrolledUnderElevation: 0,
-        backgroundColor: canvas, surfaceTintColor: Colors.transparent,
-        titleTextStyle: TextStyle(color: scheme.onSurface, fontSize: 20, fontWeight: FontWeight.w800)),
-      dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 1, space: 1),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true, fillColor: dark ? const Color(0xFF20232B) : const Color(0xFFF7F8FC),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: scheme.outlineVariant)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: scheme.outlineVariant)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: scheme.primary, width: 1.6))),
-      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(
-        minimumSize: const Size(44, 46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        textStyle: const TextStyle(fontWeight: FontWeight.w800))),
-      chipTheme: ChipThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-        side: BorderSide(color: scheme.outlineVariant), padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5)),
-      snackBarTheme: SnackBarThemeData(behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-      dialogTheme: DialogThemeData(backgroundColor: surface, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22))),
-    );
+      useMaterial3:true,brightness:brightness,colorScheme:scheme,scaffoldBackgroundColor:canvas,canvasColor:surface,
+      cardTheme:CardThemeData(color:surface,elevation:0,margin:EdgeInsets.zero,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20),side:BorderSide(color:scheme.outlineVariant))),
+      appBarTheme:AppBarTheme(centerTitle:false,elevation:0,scrolledUnderElevation:0,backgroundColor:canvas,surfaceTintColor:Colors.transparent,
+        titleTextStyle:TextStyle(color:scheme.onSurface,fontSize:20,fontWeight:FontWeight.w800)),
+      dividerTheme:DividerThemeData(color:scheme.outlineVariant,thickness:1,space:1),
+      inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:dark?const Color(0xFF20232B):const Color(0xFFF7F8FC),
+        contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.outlineVariant)),
+        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.outlineVariant)),
+        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:scheme.primary,width:1.6))),
+      filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(minimumSize:const Size(44,46),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),textStyle:const TextStyle(fontWeight:FontWeight.w800))),
+      chipTheme:ChipThemeData(shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),side:BorderSide(color:scheme.outlineVariant),padding:const EdgeInsets.symmetric(horizontal:6,vertical:5)),
+      snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
+      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22))));
   }
 }
-
 class RecentDocument {
-  const RecentDocument({required this.name, required this.kind, required this.updatedAt});
-  final String name;
-  final OfficeKind kind;
-  final DateTime updatedAt;
-  Map<String, Object?> toJson() => {'name': name, 'kind': kind.name, 'updatedAt': updatedAt.toIso8601String()};
-  factory RecentDocument.fromJson(Map<String, dynamic> json) => RecentDocument(
-    name: json['name'] as String? ?? 'Document',
-    kind: OfficeKind.values.firstWhere((e) => e.name == json['kind'], orElse: () => OfficeKind.pdf),
-    updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now());
+  const RecentDocument({required this.name,required this.kind,required this.updatedAt});
+  final String name; final OfficeKind kind; final DateTime updatedAt;
+  Map<String,Object?> toJson()=>{'name':name,'kind':kind.name,'updatedAt':updatedAt.toIso8601String()};
+  factory RecentDocument.fromJson(Map<String,dynamic> j)=>RecentDocument(
+    name:j['name'] as String? ?? 'Document',
+    kind:OfficeKind.values.firstWhere((k)=>k.name==j['kind'],orElse:()=>OfficeKind.pdf),
+    updatedAt:DateTime.tryParse(j['updatedAt'] as String? ?? '') ?? DateTime.now());
 }
-
 class AppState extends ChangeNotifier {
-  Locale locale = const Locale('en');
-  AppearanceMode mode = AppearanceMode.system;
-  int themeIndex = 0;
-  bool autosave = true, animations = true, haptics = true, compactRibbon = false, diagnostics = false;
-  bool autoRecovery = true, blueLightFilter = false, highContrast = false, spellCheck = true;
-  bool showGrid = true, focusMode = false, safeSave = true, keepRecent = true;
-  double textScale = 1, blueStrength = 0.48;
-  List<RecentDocument> recent = <RecentDocument>[];
-
-  ThemePreset get preset => ThemeCatalog.presets[themeIndex.clamp(0, 127)];
-  bool get amoled => mode == AppearanceMode.amoled;
-  bool flag(String key) => switch (key) {
-    'autosave' => autosave, 'animations' => animations, 'haptics' => haptics, 'compact' => compactRibbon,
-    'diagnostics' => diagnostics, 'autoRecovery' => autoRecovery, 'blueLightFilter' => blueLightFilter,
-    'highContrast' => highContrast, 'spellCheck' => spellCheck, 'showGrid' => showGrid,
-    'focusMode' => focusMode, 'safeSave' => safeSave, 'keepRecent' => keepRecent, _ => false,
-  };
-
+  Locale locale=const Locale('en'); AppearanceMode mode=AppearanceMode.system; int themeIndex=0;
+  double textScale=1,blueStrength=0.48;
+  bool autosave=true,animations=true,haptics=true,compactRibbon=false,diagnostics=false;
+  bool autoRecovery=true,blueLightFilter=false,highContrast=false,spellCheck=true,showGrid=true,focusMode=false,safeSave=true,keepRecent=true;
+  List<RecentDocument> recent=<RecentDocument>[];
+  ThemePreset get preset=>ThemeCatalog.presets[themeIndex.clamp(0,127)];
+  bool get amoled=>mode==AppearanceMode.amoled;
+  bool flag(String key)=>switch(key){
+    'autosave'=>autosave,'animations'=>animations,'haptics'=>haptics,'compact'=>compactRibbon,
+    'diagnostics'=>diagnostics,'autoRecovery'=>autoRecovery,'blueLightFilter'=>blueLightFilter,
+    'highContrast'=>highContrast,'spellCheck'=>spellCheck,'showGrid'=>showGrid,'focusMode'=>focusMode,
+    'safeSave'=>safeSave,'keepRecent'=>keepRecent,_=>false};
   Future<void> load() async {
-    final p = await SharedPreferences.getInstance();
-    final raw = p.getString('locale') ?? 'en';
-    final parts = raw.split('-');
-    locale = parts.length > 1 ? Locale(parts[0], parts[1]) : Locale(parts[0]);
-    mode = AppearanceMode.values.firstWhere((v) => v.name == p.getString('mode'), orElse: () => AppearanceMode.system);
-    themeIndex = (p.getInt('theme') ?? 0).clamp(0, 127);
-    textScale = (p.getDouble('textScale') ?? 1).clamp(0.85, 1.35);
-    blueStrength = (p.getDouble('blueStrength') ?? 0.48).clamp(0.0, 1.0);
-    autosave = p.getBool('autosave') ?? true;
-    animations = p.getBool('animations') ?? true;
-    haptics = p.getBool('haptics') ?? true;
-    compactRibbon = p.getBool('compact') ?? false;
-    diagnostics = p.getBool('diagnostics') ?? false;
-    autoRecovery = p.getBool('autoRecovery') ?? true;
-    blueLightFilter = p.getBool('blueLightFilter') ?? false;
-    highContrast = p.getBool('highContrast') ?? false;
-    spellCheck = p.getBool('spellCheck') ?? true;
-    showGrid = p.getBool('showGrid') ?? true;
-    focusMode = p.getBool('focusMode') ?? false;
-    safeSave = p.getBool('safeSave') ?? true;
-    keepRecent = p.getBool('keepRecent') ?? true;
-    try {
-      final data = p.getString('recentDocuments');
-      if (data != null) recent = (jsonDecode(data) as List<dynamic>).whereType<Map<String, dynamic>>().map(RecentDocument.fromJson).take(20).toList();
-    } catch (_) { recent = <RecentDocument>[]; }
+    final p=await SharedPreferences.getInstance();
+    final raw=p.getString('locale')??'en';final parts=raw.split('-');
+    locale=parts.length>1?Locale(parts[0],parts[1]):Locale(parts[0]);
+    mode=AppearanceMode.values.firstWhere((v)=>v.name==p.getString('mode'),orElse:()=>AppearanceMode.system);
+    themeIndex=(p.getInt('theme')??0).clamp(0,127);
+    textScale=(p.getDouble('textScale')??1).clamp(0.85,1.35);
+    blueStrength=(p.getDouble('blueStrength')??0.48).clamp(0.0,1.0);
+    autosave=p.getBool('autosave')??true;animations=p.getBool('animations')??true;
+    haptics=p.getBool('haptics')??true;compactRibbon=p.getBool('compact')??false;
+    diagnostics=p.getBool('diagnostics')??false;autoRecovery=p.getBool('autoRecovery')??true;
+    blueLightFilter=p.getBool('blueLightFilter')??false;highContrast=p.getBool('highContrast')??false;
+    spellCheck=p.getBool('spellCheck')??true;showGrid=p.getBool('showGrid')??true;
+    focusMode=p.getBool('focusMode')??false;safeSave=p.getBool('safeSave')??true;keepRecent=p.getBool('keepRecent')??true;
+    try { final value=p.getString('recentDocuments'); if(value!=null)recent=(jsonDecode(value) as List<dynamic>).whereType<Map<String,dynamic>>().map(RecentDocument.fromJson).take(20).toList(); } catch (_) {recent=<RecentDocument>[];}
   }
-
-  Future<void> setLocale(Locale v) async { locale = v; notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setString('locale', v.toLanguageTag()); }
-  Future<void> setMode(AppearanceMode v) async { mode = v; notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setString('mode', v.name); }
-  Future<void> setTheme(int v) async { themeIndex = v.clamp(0, 127); notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setInt('theme', themeIndex); if (haptics) await HapticFeedback.selectionClick(); }
-  Future<void> setTextScale(double v) async { textScale = v.clamp(0.85, 1.35); notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setDouble('textScale', textScale); }
-  Future<void> setBlueStrength(double v) async { blueStrength = v.clamp(0.0, 1.0); notifyListeners(); final p = await SharedPreferences.getInstance(); await p.setDouble('blueStrength', blueStrength); }
-
-  Future<void> setFlag(String key, bool v) async {
-    switch (key) {
-      case 'autosave': autosave = v;
-      case 'animations': animations = v;
-      case 'haptics': haptics = v;
-      case 'compact': compactRibbon = v;
-      case 'diagnostics': diagnostics = v;
-      case 'autoRecovery': autoRecovery = v;
-      case 'blueLightFilter': blueLightFilter = v;
-      case 'highContrast': highContrast = v;
-      case 'spellCheck': spellCheck = v;
-      case 'showGrid': showGrid = v;
-      case 'focusMode': focusMode = v;
-      case 'safeSave': safeSave = v;
-      case 'keepRecent': keepRecent = v;
+  Future<void> setLocale(Locale v) async {locale=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('locale',v.toLanguageTag());}
+  Future<void> setMode(AppearanceMode v) async {mode=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('mode',v.name);}
+  Future<void> setTheme(int v) async {themeIndex=v.clamp(0,127);notifyListeners();final p=await SharedPreferences.getInstance();await p.setInt('theme',themeIndex);if(haptics)await HapticFeedback.selectionClick();}
+  Future<void> setTextScale(double v) async {textScale=v.clamp(0.85,1.35);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('textScale',textScale);}
+  Future<void> setBlueStrength(double v) async {blueStrength=v.clamp(0.0,1.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('blueStrength',blueStrength);}
+  Future<void> setFlag(String key,bool v) async {
+    switch(key){
+      case 'autosave': autosave=v; break; case 'animations': animations=v; break; case 'haptics': haptics=v; break;
+      case 'compact': compactRibbon=v; break; case 'diagnostics': diagnostics=v; break; case 'autoRecovery': autoRecovery=v; break;
+      case 'blueLightFilter': blueLightFilter=v; break; case 'highContrast': highContrast=v; break; case 'spellCheck': spellCheck=v; break;
+      case 'showGrid': showGrid=v; break; case 'focusMode': focusMode=v; break; case 'safeSave': safeSave=v; break; case 'keepRecent': keepRecent=v; break;
     }
-    notifyListeners();
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, v);
+    notifyListeners();final p=await SharedPreferences.getInstance();await p.setBool(key,v);
   }
-
-  Future<void> addRecent(String name, OfficeKind kind) async {
-    if (!keepRecent) return;
-    recent.removeWhere((d) => d.name == name);
-    recent.insert(0, RecentDocument(name: name, kind: kind, updatedAt: DateTime.now()));
-    if (recent.length > 20) recent = recent.take(20).toList();
-    await _persistRecent();
-    notifyListeners();
+  Future<void> addRecent(String name,OfficeKind kind) async {
+    if(!keepRecent)return;recent.removeWhere((d)=>d.name==name);
+    recent.insert(0,RecentDocument(name:name,kind:kind,updatedAt:DateTime.now()));
+    if(recent.length>20)recent=recent.take(20).toList();await _persistRecent();notifyListeners();
   }
-  Future<void> removeRecent(String name) async { recent.removeWhere((d) => d.name == name); await _persistRecent(); notifyListeners(); }
-  Future<void> clearRecent() async { recent.clear(); await _persistRecent(); notifyListeners(); }
-  Future<void> _persistRecent() async { final p = await SharedPreferences.getInstance(); await p.setString('recentDocuments', jsonEncode(recent.map((d) => d.toJson()).toList())); }
-
-  Future<Map<String, String>?> readDraft(OfficeKind kind) async {
-    final p = await SharedPreferences.getInstance(); final raw = p.getString('draft_${kind.name}');
-    if (raw == null) return null;
-    try { return Map<String, String>.from(jsonDecode(raw) as Map); } catch (_) { return null; }
+  Future<void> removeRecent(String name) async {recent.removeWhere((d)=>d.name==name);await _persistRecent();notifyListeners();}
+  Future<void> clearRecent() async {recent.clear();await _persistRecent();notifyListeners();}
+  Future<void> _persistRecent() async {final p=await SharedPreferences.getInstance();await p.setString('recentDocuments',jsonEncode(recent.map((d)=>d.toJson()).toList()));}
+  Future<Map<String,String>?> readDraft(OfficeKind kind) async {final p=await SharedPreferences.getInstance();final raw=p.getString('draft_'+kind.name);if(raw==null)return null;try{return Map<String,String>.from(jsonDecode(raw) as Map);}catch(_){return null;}}
+  Future<void> saveDraft(OfficeKind kind,{required String title,required String body,required String subtitle}) async {
+    if(!autosave)return;final p=await SharedPreferences.getInstance();await p.setString('draft_'+kind.name,jsonEncode({'title':title,'body':body,'subtitle':subtitle}));
   }
-  Future<void> saveDraft(OfficeKind kind, {required String title, required String body, required String subtitle}) async {
-    if (!autosave) return;
-    final p = await SharedPreferences.getInstance();
-    await p.setString('draft_${kind.name}', jsonEncode({'title': title, 'body': body, 'subtitle': subtitle}));
-  }
-  Future<void> clearDraft(OfficeKind kind) async { final p = await SharedPreferences.getInstance(); await p.remove('draft_${kind.name}'); }
-
+  Future<void> clearDraft(OfficeKind kind) async {final p=await SharedPreferences.getInstance();await p.remove('draft_'+kind.name);}
   Future<void> resetPreferences() async {
-    final p = await SharedPreferences.getInstance();
-    locale = const Locale('en'); mode = AppearanceMode.system; themeIndex = 0; textScale = 1; blueStrength = 0.48;
-    autosave = true; animations = true; haptics = true; compactRibbon = false; diagnostics = false;
-    autoRecovery = true; blueLightFilter = false; highContrast = false; spellCheck = true; showGrid = true;
-    focusMode = false; safeSave = true; keepRecent = true;
-    for (final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent']) { await p.remove(key); }
+    final p=await SharedPreferences.getInstance();locale=const Locale('en');mode=AppearanceMode.system;themeIndex=0;textScale=1;blueStrength=0.48;
+    autosave=true;animations=true;haptics=true;compactRibbon=false;diagnostics=false;autoRecovery=true;blueLightFilter=false;highContrast=false;
+    spellCheck=true;showGrid=true;focusMode=false;safeSave=true;keepRecent=true;
+    for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent']){await p.remove(key);}
     notifyListeners();
   }
-  Map<String, Object?> exportablePreferences() => {
-    'language': locale.toLanguageTag(), 'appearance': mode.name, 'theme': preset.name,
-    'themeIndex': themeIndex, 'textScale': textScale, 'blueLightStrength': blueStrength,
-    'settings': {'autosave':autosave,'animations':animations,'haptics':haptics,'compactRibbon':compactRibbon,
-      'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
-      'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent},
-  };
+  Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
+    'textScale':textScale,'blueLightStrength':blueStrength,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
+    'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
+    'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent}};
 }
-
 class L10n {
-  static const locales = <Locale>[
-    Locale('fa'),Locale('en'),Locale('da'),Locale('de'),Locale('de','CH'),Locale('ar'),Locale('hi'),Locale('he'),
-    Locale('es'),Locale('it'),Locale('sv'),Locale('fi'),Locale('no'),Locale('is'),Locale('el'),Locale('tr')
-  ];
-  static const names = <String>['فارسی','English','Dansk','Deutsch','Schweizerdeutsch','العربية','हिन्दी','עברית','Español','Italiano','Svenska','Suomi','Norsk','Íslenska','Ελληνικά','Türkçe'];
-  static const en = <String,String>{
-    'home':'Home','recent':'Recent','workspace':'Workspace','settings':'Settings','open':'Open file',
-    'create':'Create new','newDoc':'New document','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel',
-    'welcome':'A calmer workspace for serious work','welcomeSub':'Create, organize and export your documents from one place.',
-    'quick':'Quick actions','appearance':'Appearance','themes':'Color themes','language':'Language','mode':'Display mode',
-    'system':'System','light':'Light','dark':'Dark','amoled':'AMOLED black','general':'General','editor':'Editor',
-    'security':'Privacy & security','performance':'Performance','accessibility':'Accessibility','searchSettings':'Search settings',
-    'blue':'Blue-light filter','blueSub':'Optional warm screen tint for evening work.','textScale':'Text size',
-    'blueStrength':'Warm tint strength','reset':'Reset settings','export':'Export settings','cancel':'Cancel',
-    'docTitle':'Document title','content':'Content','subtitle':'Subtitle','save':'Create and save',
-    'empty':'Your recent documents will appear here.','noRecent':'No recent documents yet','clearRecent':'Clear recent list',
-    'autosave':'Autosave drafts','recovery':'Draft recovery','motion':'Motion and transitions','haptics':'Haptic feedback',
-    'compact':'Compact toolbars','keepRecent':'Keep recent documents','contrast':'High contrast','spell':'Text suggestions',
-    'grid':'Show workspace grid','focus':'Focus-friendly editor','safeSave':'Safer save flow','diagnostics':'Anonymous diagnostics',
-    'resetQuestion':'Reset app preferences to their defaults?','paletteHint':'128 curated accents for Light, Dark and AMOLED.',
-    'createFirst':'Create your first document','search':'Search','restored':'Draft restored','saved':'File saved successfully',
-  };
-  static const fa = <String,String>{
-    'home':'خانه','recent':'اخیر','workspace':'فضای کاری','settings':'تنظیمات','open':'باز کردن فایل',
-    'create':'ساخت فایل','newDoc':'سند جدید','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel',
-    'welcome':'فضایی منظم‌تر برای کارهای حرفه‌ای','welcomeSub':'سند بسازید، مدیریت کنید و خروجی بگیرید؛ همه در یک جا.',
-    'quick':'عملیات سریع','appearance':'ظاهر برنامه','themes':'تم‌های رنگی','language':'زبان','mode':'حالت نمایش',
-    'system':'سیستم','light':'روشن','dark':'تاریک','amoled':'مشکی AMOLED','general':'عمومی','editor':'ویرایشگر',
-    'security':'حریم خصوصی و امنیت','performance':'کارایی','accessibility':'دسترس‌پذیری','searchSettings':'جست‌وجو در تنظیمات',
-    'blue':'فیلتر نور آبی','blueSub':'فیلتر گرم و اختیاری برای کار در شب.','textScale':'اندازه متن',
-    'blueStrength':'شدت فیلتر گرم','reset':'بازنشانی تنظیمات','export':'خروجی تنظیمات','cancel':'لغو',
-    'docTitle':'عنوان سند','content':'محتوا','subtitle':'زیرعنوان','save':'ساخت و ذخیره',
-    'empty':'سندهای اخیر شما اینجا نمایش داده می‌شوند.','noRecent':'هنوز سندی ندارید','clearRecent':'پاک‌کردن فهرست اخیر',
+  static const locales=<Locale>[Locale('fa'),Locale('en'),Locale('da'),Locale('de'),Locale('de','CH'),Locale('ar'),Locale('hi'),Locale('he'),Locale('es'),Locale('it'),Locale('sv'),Locale('fi'),Locale('no'),Locale('is'),Locale('el'),Locale('tr')];
+  static const names=<String>['فارسی','English','Dansk','Deutsch','Schweizerdeutsch','العربية','हिन्दी','עברית','Español','Italiano','Svenska','Suomi','Norsk','Íslenska','Ελληνικά','Türkçe'];
+  static const en=<String,String>{
+    'home':'Home','recent':'Recent','workspace':'Workspace','settings':'Settings','open':'Open file','create':'Create new','newDoc':'New document',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'A calmer workspace for serious work',
+    'welcomeSub':'Create, organize and export your documents from one place.','quick':'Quick actions','appearance':'Appearance','themes':'Color themes',
+    'language':'Language','mode':'Display mode','system':'System','light':'Light','dark':'Dark','amoled':'AMOLED black',
+    'general':'General','editor':'Editor','security':'Privacy & security','performance':'Performance','accessibility':'Accessibility',
+    'searchSettings':'Search settings','blue':'Blue-light filter','blueSub':'Optional warm screen tint for evening work.',
+    'textScale':'Text size','blueStrength':'Warm tint strength','reset':'Reset settings','export':'Export settings','cancel':'Cancel',
+    'docTitle':'Document title','content':'Content','subtitle':'Subtitle','save':'Create and save','empty':'Your recent documents will appear here.',
+    'noRecent':'No recent documents yet','clearRecent':'Clear recent list','autosave':'Autosave drafts','recovery':'Draft recovery',
+    'motion':'Motion and transitions','haptics':'Haptic feedback','compact':'Compact toolbars','keepRecent':'Keep recent documents',
+    'contrast':'High contrast','spell':'Text suggestions','grid':'Show workspace grid','focus':'Focus-friendly editor','safeSave':'Safer save flow',
+    'diagnostics':'Anonymous diagnostics','resetQuestion':'Reset app preferences to their defaults?','paletteHint':'128 curated palettes for Light, Dark and AMOLED.',
+    'createFirst':'Create your first document','search':'Search','restored':'Draft restored','saved':'File saved successfully','all':'All',
+    'Cool':'Cool','Nature':'Nature','Warm':'Warm','Minimal':'Minimal'};
+  static const fa=<String,String>{
+    'home':'خانه','recent':'اخیر','workspace':'فضای کاری','settings':'تنظیمات','open':'باز کردن فایل','create':'ساخت فایل','newDoc':'سند جدید',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'فضایی منظم‌تر برای کارهای حرفه‌ای',
+    'welcomeSub':'سند بسازید، مدیریت کنید و خروجی بگیرید؛ همه در یک جا.','quick':'عملیات سریع','appearance':'ظاهر برنامه','themes':'تم‌های رنگی',
+    'language':'زبان','mode':'حالت نمایش','system':'سیستم','light':'روشن','dark':'تاریک','amoled':'مشکی AMOLED','general':'عمومی',
+    'editor':'ویرایشگر','security':'حریم خصوصی و امنیت','performance':'کارایی','accessibility':'دسترس‌پذیری','searchSettings':'جست‌وجو در تنظیمات',
+    'blue':'فیلتر نور آبی','blueSub':'فیلتر گرم و اختیاری برای کار در شب.','textScale':'اندازه متن','blueStrength':'شدت فیلتر گرم',
+    'reset':'بازنشانی تنظیمات','export':'خروجی تنظیمات','cancel':'لغو','docTitle':'عنوان سند','content':'محتوا','subtitle':'زیرعنوان',
+    'save':'ساخت و ذخیره','empty':'سندهای اخیر شما اینجا نمایش داده می‌شوند.','noRecent':'هنوز سندی ندارید','clearRecent':'پاک‌کردن فهرست اخیر',
     'autosave':'ذخیره خودکار پیش‌نویس','recovery':'بازیابی پیش‌نویس','motion':'حرکت و گذارها','haptics':'بازخورد لمسی',
     'compact':'نوار ابزار فشرده','keepRecent':'نگهداری سندهای اخیر','contrast':'کنتراست بالا','spell':'پیشنهادهای نوشتاری',
     'grid':'نمایش شبکه فضای کاری','focus':'ویرایشگر متمرکز','safeSave':'ذخیره‌سازی ایمن‌تر','diagnostics':'گزارش ناشناس خطا',
-    'resetQuestion':'تنظیمات برنامه به حالت پیش‌فرض برگردد؟','paletteHint':'۱۲۸ رنگ حرفه‌ای برای حالت روشن، تاریک و AMOLED.',
-    'createFirst':'اولین سند خود را بسازید','search':'جست‌وجو','restored':'پیش‌نویس بازیابی شد','saved':'فایل با موفقیت ذخیره شد',
-  };
-  static const ar = <String,String>{
-    'home':'الرئيسية','recent':'الأخيرة','workspace':'مساحة العمل','settings':'الإعدادات','open':'فتح ملف',
-    'create':'إنشاء جديد','newDoc':'مستند جديد','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel',
-    'welcome':'مساحة منظمة للعمل الاحترافي','welcomeSub':'أنشئ مستنداتك ونظّمها وصدّرها من مكان واحد.',
-    'quick':'إجراءات سريعة','appearance':'المظهر','themes':'ألوان السمات','language':'اللغة','mode':'وضع العرض',
-    'system':'النظام','light':'فاتح','dark':'داكن','amoled':'أسود AMOLED','general':'عام','editor':'المحرر',
-    'security':'الخصوصية والأمان','performance':'الأداء','accessibility':'إمكانية الوصول','searchSettings':'بحث في الإعدادات',
-    'blue':'مرشح الضوء الأزرق','blueSub':'لون دافئ اختياري للعمل مساءً.','textScale':'حجم النص',
-    'blueStrength':'قوة اللون الدافئ','reset':'إعادة ضبط الإعدادات','export':'تصدير الإعدادات','cancel':'إلغاء',
-    'docTitle':'عنوان المستند','content':'المحتوى','subtitle':'العنوان الفرعي','save':'إنشاء وحفظ',
-    'empty':'ستظهر مستنداتك الأخيرة هنا.','noRecent':'لا توجد مستندات حديثة','clearRecent':'مسح القائمة',
+    'resetQuestion':'تنظیمات برنامه به حالت پیش‌فرض برگردد؟','paletteHint':'۱۲۸ رنگ هماهنگ برای حالت روشن، تاریک و AMOLED.',
+    'createFirst':'اولین سند خود را بسازید','search':'جست‌وجو','restored':'پیش‌نویس بازیابی شد','saved':'فایل با موفقیت ذخیره شد','all':'همه',
+    'Cool':'سرد','Nature':'طبیعت','Warm':'گرم','Minimal':'مینیمال'};
+  static const ar=<String,String>{
+    'home':'الرئيسية','recent':'الأخيرة','workspace':'مساحة العمل','settings':'الإعدادات','open':'فتح ملف','create':'إنشاء جديد','newDoc':'مستند جديد',
+    'pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'مساحة منظمة للعمل الاحترافي',
+    'welcomeSub':'أنشئ مستنداتك ونظّمها وصدّرها من مكان واحد.','quick':'إجراءات سريعة','appearance':'المظهر','themes':'ألوان السمات',
+    'language':'اللغة','mode':'وضع العرض','system':'النظام','light':'فاتح','dark':'داكن','amoled':'أسود AMOLED','general':'عام',
+    'editor':'المحرر','security':'الخصوصية والأمان','performance':'الأداء','accessibility':'إمكانية الوصول','searchSettings':'بحث في الإعدادات',
+    'blue':'مرشح الضوء الأزرق','blueSub':'لون دافئ اختياري للعمل مساءً.','textScale':'حجم النص','blueStrength':'قوة اللون الدافئ',
+    'reset':'إعادة ضبط الإعدادات','export':'تصدير الإعدادات','cancel':'إلغاء','docTitle':'عنوان المستند','content':'المحتوى','subtitle':'العنوان الفرعي',
+    'save':'إنشاء وحفظ','empty':'ستظهر مستنداتك الأخيرة هنا.','noRecent':'لا توجد مستندات حديثة','clearRecent':'مسح القائمة',
     'autosave':'حفظ المسودات تلقائيًا','recovery':'استعادة المسودات','motion':'الحركة والانتقالات','haptics':'الاهتزاز اللمسي',
     'compact':'أشرطة أدوات مضغوطة','keepRecent':'الاحتفاظ بالمستندات الأخيرة','contrast':'تباين مرتفع','spell':'اقتراحات النص',
     'grid':'عرض الشبكة','focus':'محرر للتركيز','safeSave':'حفظ أكثر أمانًا','diagnostics':'تقارير مجهولة',
     'resetQuestion':'إعادة تفضيلات التطبيق إلى الوضع الافتراضي؟','paletteHint':'١٢٨ لونًا متناسقًا للأوضاع الفاتح والداكن وAMOLED.',
-    'createFirst':'أنشئ مستندك الأول','search':'بحث','restored':'تمت استعادة المسودة','saved':'تم حفظ الملف بنجاح',
-  };
-  static const de = <String,String>{'home':'Start','recent':'Zuletzt','workspace':'Arbeitsbereich','settings':'Einstellungen','open':'Datei öffnen','create':'Neu erstellen','newDoc':'Neues Dokument','welcome':'Ein klarer Arbeitsbereich','welcomeSub':'Dokumente an einem Ort erstellen, ordnen und exportieren.','quick':'Schnellaktionen','appearance':'Darstellung','themes':'Farbthemen','language':'Sprache','mode':'Anzeigemodus','system':'System','light':'Hell','dark':'Dunkel','amoled':'AMOLED-Schwarz','general':'Allgemein','editor':'Editor','security':'Datenschutz & Sicherheit','performance':'Leistung','accessibility':'Barrierefreiheit','searchSettings':'Einstellungen suchen','blue':'Blaulichtfilter','blueSub':'Optionaler warmer Bildschirmton am Abend.','textScale':'Textgröße','blueStrength':'Wärmeintensität','reset':'Einstellungen zurücksetzen','export':'Einstellungen exportieren','cancel':'Abbrechen','docTitle':'Dokumenttitel','content':'Inhalt','subtitle':'Untertitel','save':'Erstellen und speichern','empty':'Ihre letzten Dokumente erscheinen hier.','noRecent':'Noch keine aktuellen Dokumente','clearRecent':'Liste leeren','autosave':'Entwürfe automatisch speichern','recovery':'Entwurfswiederherstellung','motion':'Bewegung und Übergänge','haptics':'Haptisches Feedback','compact':'Kompakte Symbolleisten','keepRecent':'Zuletzt verwendete Dokumente behalten','contrast':'Hoher Kontrast','spell':'Textvorschläge','grid':'Raster anzeigen','focus':'Fokus-Editor','safeSave':'Sicheres Speichern','diagnostics':'Anonyme Diagnose','resetQuestion':'App-Einstellungen auf Standard zurücksetzen?','paletteHint':'128 abgestimmte Akzentfarben für Hell, Dunkel und AMOLED.','createFirst':'Erstes Dokument erstellen','search':'Suchen','restored':'Entwurf wiederhergestellt','saved':'Datei erfolgreich gespeichert'};
-  static const es = <String,String>{'home':'Inicio','recent':'Recientes','workspace':'Espacio de trabajo','settings':'Ajustes','open':'Abrir archivo','create':'Crear nuevo','newDoc':'Documento nuevo','welcome':'Un espacio más claro para trabajar','welcomeSub':'Crea, organiza y exporta tus documentos en un solo lugar.','quick':'Acciones rápidas','appearance':'Apariencia','themes':'Temas de color','language':'Idioma','mode':'Modo de pantalla','system':'Sistema','light':'Claro','dark':'Oscuro','amoled':'Negro AMOLED','general':'General','editor':'Editor','security':'Privacidad y seguridad','performance':'Rendimiento','accessibility':'Accesibilidad','searchSettings':'Buscar ajustes','blue':'Filtro de luz azul','blueSub':'Tinte cálido opcional para la noche.','textScale':'Tamaño del texto','blueStrength':'Intensidad del tono cálido','reset':'Restablecer ajustes','export':'Exportar ajustes','cancel':'Cancelar','docTitle':'Título del documento','content':'Contenido','subtitle':'Subtítulo','save':'Crear y guardar','empty':'Tus documentos recientes aparecerán aquí.','noRecent':'Todavía no hay documentos recientes','clearRecent':'Vaciar lista','autosave':'Guardar borradores automáticamente','recovery':'Recuperación de borradores','motion':'Movimiento y transiciones','haptics':'Respuesta háptica','compact':'Barras compactas','keepRecent':'Conservar documentos recientes','contrast':'Alto contraste','spell':'Sugerencias de texto','grid':'Mostrar cuadrícula','focus':'Editor de concentración','safeSave':'Guardado seguro','diagnostics':'Diagnóstico anónimo','resetQuestion':'¿Restablecer los ajustes de la aplicación?','paletteHint':'128 acentos coordinados para modos claro, oscuro y AMOLED.','createFirst':'Crea tu primer documento','search':'Buscar','restored':'Borrador recuperado','saved':'Archivo guardado correctamente'};
-  static const tr = <String,String>{'home':'Ana sayfa','recent':'Son kullanılanlar','workspace':'Çalışma alanı','settings':'Ayarlar','open':'Dosya aç','create':'Yeni oluştur','newDoc':'Yeni belge','welcome':'Daha düzenli bir çalışma alanı','welcomeSub':'Belgelerinizi tek yerden oluşturun, düzenleyin ve dışa aktarın.','quick':'Hızlı işlemler','appearance':'Görünüm','themes':'Renk temaları','language':'Dil','mode':'Görünüm modu','system':'Sistem','light':'Açık','dark':'Koyu','amoled':'AMOLED siyah','general':'Genel','editor':'Düzenleyici','security':'Gizlilik ve güvenlik','performance':'Performans','accessibility':'Erişilebilirlik','searchSettings':'Ayarları ara','blue':'Mavi ışık filtresi','blueSub':'Akşam çalışması için isteğe bağlı sıcak ton.','textScale':'Metin boyutu','blueStrength':'Sıcak ton yoğunluğu','reset':'Ayarları sıfırla','export':'Ayarları dışa aktar','cancel':'İptal','docTitle':'Belge başlığı','content':'İçerik','subtitle':'Alt başlık','save':'Oluştur ve kaydet','empty':'Son belgeleriniz burada görünecek.','noRecent':'Henüz son belge yok','clearRecent':'Son listeyi temizle','autosave':'Taslakları otomatik kaydet','recovery':'Taslak kurtarma','motion':'Hareket ve geçişler','haptics':'Dokunsal geri bildirim','compact':'Kompakt araç çubukları','keepRecent':'Son belgeleri sakla','contrast':'Yüksek kontrast','spell':'Metin önerileri','grid':'Izgarayı göster','focus':'Odak düzenleyicisi','safeSave':'Güvenli kaydetme','diagnostics':'Anonim tanılama','resetQuestion':'Uygulama tercihleri varsayılana sıfırlansın mı?','paletteHint':'Açık, koyu ve AMOLED modları için 128 renk.','createFirst':'İlk belgenizi oluşturun','search':'Ara','restored':'Taslak kurtarıldı','saved':'Dosya başarıyla kaydedildi'};
-  static String text(Locale locale, String key) {
-    final table = switch (locale.languageCode) {'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,_=>en};
-    return table[key] ?? en[key] ?? key;
+    'createFirst':'أنشئ مستندك الأول','search':'بحث','restored':'تمت استعادة المسودة','saved':'تم حفظ الملف بنجاح','all':'الكل',
+    'Cool':'بارد','Nature':'طبيعة','Warm':'دافئ','Minimal':'بسيط'};
+  static const de=<String,String>{'home':'Start','recent':'Zuletzt','workspace':'Arbeitsbereich','settings':'Einstellungen','open':'Datei öffnen','create':'Neu erstellen','newDoc':'Neues Dokument','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Ein klarer Arbeitsbereich','welcomeSub':'Dokumente an einem Ort erstellen, ordnen und exportieren.','quick':'Schnellaktionen','appearance':'Darstellung','themes':'Farbthemen','language':'Sprache','mode':'Anzeigemodus','system':'System','light':'Hell','dark':'Dunkel','amoled':'AMOLED-Schwarz','general':'Allgemein','editor':'Editor','security':'Datenschutz & Sicherheit','performance':'Leistung','accessibility':'Barrierefreiheit','searchSettings':'Einstellungen suchen','blue':'Blaulichtfilter','blueSub':'Optionaler warmer Bildschirmton am Abend.','textScale':'Textgröße','blueStrength':'Wärmeintensität','reset':'Einstellungen zurücksetzen','export':'Einstellungen exportieren','cancel':'Abbrechen','docTitle':'Dokumenttitel','content':'Inhalt','subtitle':'Untertitel','save':'Erstellen und speichern','empty':'Ihre letzten Dokumente erscheinen hier.','noRecent':'Noch keine aktuellen Dokumente','clearRecent':'Liste leeren','autosave':'Entwürfe automatisch speichern','recovery':'Entwurfswiederherstellung','motion':'Bewegung und Übergänge','haptics':'Haptisches Feedback','compact':'Kompakte Symbolleisten','keepRecent':'Zuletzt verwendete Dokumente behalten','contrast':'Hoher Kontrast','spell':'Textvorschläge','grid':'Raster anzeigen','focus':'Fokus-Editor','safeSave':'Sicheres Speichern','diagnostics':'Anonyme Diagnose','resetQuestion':'App-Einstellungen auf Standard zurücksetzen?','paletteHint':'128 abgestimmte Paletten für Hell, Dunkel und AMOLED.','createFirst':'Erstes Dokument erstellen','search':'Suchen','restored':'Entwurf wiederhergestellt','saved':'Datei erfolgreich gespeichert','all':'Alle'};
+  static const es=<String,String>{'home':'Inicio','recent':'Recientes','workspace':'Espacio de trabajo','settings':'Ajustes','open':'Abrir archivo','create':'Crear nuevo','newDoc':'Documento nuevo','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Un espacio más claro para trabajar','welcomeSub':'Crea, organiza y exporta tus documentos en un solo lugar.','quick':'Acciones rápidas','appearance':'Apariencia','themes':'Temas de color','language':'Idioma','mode':'Modo de pantalla','system':'Sistema','light':'Claro','dark':'Oscuro','amoled':'Negro AMOLED','general':'General','editor':'Editor','security':'Privacidad y seguridad','performance':'Rendimiento','accessibility':'Accesibilidad','searchSettings':'Buscar ajustes','blue':'Filtro de luz azul','blueSub':'Tinte cálido opcional para la noche.','textScale':'Tamaño del texto','blueStrength':'Intensidad del tono cálido','reset':'Restablecer ajustes','export':'Exportar ajustes','cancel':'Cancelar','docTitle':'Título del documento','content':'Contenido','subtitle':'Subtítulo','save':'Crear y guardar','empty':'Tus documentos recientes aparecerán aquí.','noRecent':'Todavía no hay documentos recientes','clearRecent':'Vaciar lista','autosave':'Guardar borradores automáticamente','recovery':'Recuperación de borradores','motion':'Movimiento y transiciones','haptics':'Respuesta háptica','compact':'Barras compactas','keepRecent':'Conservar documentos recientes','contrast':'Alto contraste','spell':'Sugerencias de texto','grid':'Mostrar cuadrícula','focus':'Editor de concentración','safeSave':'Guardado seguro','diagnostics':'Diagnóstico anónimo','resetQuestion':'¿Restablecer los ajustes de la aplicación?','paletteHint':'128 paletas coordinadas para los modos claro, oscuro y AMOLED.','createFirst':'Crea tu primer documento','search':'Buscar','restored':'Borrador recuperado','saved':'Archivo guardado correctamente','all':'Todos'};
+  static const tr=<String,String>{'home':'Ana sayfa','recent':'Son kullanılanlar','workspace':'Çalışma alanı','settings':'Ayarlar','open':'Dosya aç','create':'Yeni oluştur','newDoc':'Yeni belge','pdf':'PDF','word':'Word','powerpoint':'PowerPoint','excel':'Excel','welcome':'Daha düzenli bir çalışma alanı','welcomeSub':'Belgelerinizi tek yerden oluşturun, düzenleyin ve dışa aktarın.','quick':'Hızlı işlemler','appearance':'Görünüm','themes':'Renk temaları','language':'Dil','mode':'Görünüm modu','system':'Sistem','light':'Açık','dark':'Koyu','amoled':'AMOLED siyah','general':'Genel','editor':'Düzenleyici','security':'Gizlilik ve güvenlik','performance':'Performans','accessibility':'Erişilebilirlik','searchSettings':'Ayarları ara','blue':'Mavi ışık filtresi','blueSub':'Akşam çalışması için isteğe bağlı sıcak ton.','textScale':'Metin boyutu','blueStrength':'Sıcak ton yoğunluğu','reset':'Ayarları sıfırla','export':'Ayarları dışa aktar','cancel':'İptal','docTitle':'Belge başlığı','content':'İçerik','subtitle':'Alt başlık','save':'Oluştur ve kaydet','empty':'Son belgeleriniz burada görünecek.','noRecent':'Henüz son belge yok','clearRecent':'Son listeyi temizle','autosave':'Taslakları otomatik kaydet','recovery':'Taslak kurtarma','motion':'Hareket ve geçişler','haptics':'Dokunsal geri bildirim','compact':'Kompakt araç çubukları','keepRecent':'Son belgeleri sakla','contrast':'Yüksek kontrast','spell':'Metin önerileri','grid':'Izgarayı göster','focus':'Odak düzenleyicisi','safeSave':'Güvenli kaydetme','diagnostics':'Anonim tanılama','resetQuestion':'Uygulama tercihleri varsayılana sıfırlansın mı?','paletteHint':'Açık, koyu ve AMOLED için 128 renk paleti.','createFirst':'İlk belgenizi oluşturun','search':'Ara','restored':'Taslak kurtarıldı','saved':'Dosya başarıyla kaydedildi','all':'Tümü'};
+  static String text(Locale locale,String key){
+    final table=switch(locale.languageCode){'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,_=>en};
+    return table[key]??en[key]??key;
   }
-  static bool rtl(Locale locale) => const {'fa','ar','he'}.contains(locale.languageCode);
+  static bool rtl(Locale l)=>const {'fa','ar','he'}.contains(l.languageCode);
 }
-
 class ParinOfficeApp extends StatefulWidget {
   const ParinOfficeApp({super.key});
-  @override State<ParinOfficeApp> createState() => _ParinOfficeAppState();
+  @override State<ParinOfficeApp> createState()=>_ParinOfficeAppState();
 }
-class _ParinOfficeAppState extends State<ParinOfficeApp> {
-  final state = AppState();
-  bool ready = false;
-  @override void initState() { super.initState(); state.load().whenComplete(() { if (mounted) setState(() => ready = true); }); }
-  @override void dispose() { state.dispose(); super.dispose(); }
-  @override Widget build(BuildContext context) {
-    if (!ready) return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
-    return AnimatedBuilder(
-      animation: state,
-      builder: (context, _) => MaterialApp(
-        title: 'Parin Office', debugShowCheckedModeBanner: false, locale: state.locale,
-        supportedLocales: L10n.locales,
-        localizationsDelegates: const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],
-        theme: ThemeCatalog.build(state.preset, Brightness.light, false, highContrast: state.highContrast),
-        darkTheme: ThemeCatalog.build(state.preset, Brightness.dark, state.amoled, highContrast: state.highContrast),
-        themeMode: state.mode == AppearanceMode.system ? ThemeMode.system : state.mode == AppearanceMode.light ? ThemeMode.light : ThemeMode.dark,
-        localeResolutionCallback: (device, supported) {
-          for (final l in supported) { if (l.toLanguageTag() == state.locale.toLanguageTag()) return l; }
-          for (final l in supported) { if (l.languageCode == state.locale.languageCode) return l; }
-          return const Locale('en');
-        },
-        builder: (context, child) => Directionality(
-          textDirection: L10n.rtl(state.locale) ? TextDirection.rtl : TextDirection.ltr,
-          child: MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(state.textScale)),
-            child: Stack(fit: StackFit.expand, children: [
-              child ?? const SizedBox.shrink(),
-              if (state.blueLightFilter) IgnorePointer(child: ColoredBox(color: Color.fromRGBO(255,153,64,0.23 * state.blueStrength))),
-            ]),
-          ),
-        ),
-        home: Shell(state: state),
-      ),
-    );
+class _ParinOfficeAppState extends State<ParinOfficeApp>{
+  final state=AppState();bool ready=false;
+  @override void initState(){super.initState();state.load().whenComplete(()=>{if(mounted)setState(()=>ready=true)});}
+  @override void dispose(){state.dispose();super.dispose();}
+  @override Widget build(BuildContext context){
+    if(!ready)return const MaterialApp(home:Scaffold(body:Center(child:CircularProgressIndicator())));
+    return AnimatedBuilder(animation:state,builder:(context,_)=>MaterialApp(
+      title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
+      localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],
+      localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
+      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast),
+      darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast),
+      themeMode:state.mode==AppearanceMode.system?ThemeMode.system:state.mode==AppearanceMode.light?ThemeMode.light:ThemeMode.dark,
+      builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
+        child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
+          child:Stack(fit:StackFit.expand,children:[child??const SizedBox.shrink(),
+            if(state.blueLightFilter)IgnorePointer(child:ColoredBox(color:Color.fromRGBO(255,153,64,0.23*state.blueStrength)))]))),
+      home:Shell(state:state)));
   }
 }
-
-class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, this.size = 42});
-  final double size;
-  @override Widget build(BuildContext context) => Container(
-    width: size, height: size,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(size * 0.28),
-      gradient: const LinearGradient(begin: Alignment.topLeft,end: Alignment.bottomRight,colors:[Color(0xFF2869F6),Color(0xFF7255DE)]),
-      boxShadow: [BoxShadow(color: const Color(0xFF4169E8).withAlpha(45),blurRadius:size * 0.32,offset:Offset(0,size * 0.08))]),
-    child: Stack(alignment:Alignment.center,children:[
-      Text('P',style:TextStyle(color:Colors.white,fontSize:size*0.63,fontWeight:FontWeight.w900,height:1)),
+class BrandMark extends StatelessWidget{
+  const BrandMark({super.key,this.size=42});final double size;
+  @override Widget build(BuildContext context)=>Container(width:size,height:size,
+    decoration:BoxDecoration(borderRadius:BorderRadius.circular(size*0.28),
+      gradient:const LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[Color(0xFF2869F6),Color(0xFF7255DE)]),
+      boxShadow:[BoxShadow(color:const Color(0xFF4169E8).withAlpha(45),blurRadius:size*0.32,offset:Offset(0,size*0.08))]),
+    child:Stack(alignment:Alignment.center,children:[Text('P',style:TextStyle(color:Colors.white,fontSize:size*0.63,fontWeight:FontWeight.w900,height:1)),
       Positioned(right:size*0.16,bottom:size*0.17,child:Container(width:size*0.21,height:size*0.21,
-        decoration:BoxDecoration(color:const Color(0xFF70E3D3),borderRadius:BorderRadius.circular(size*0.06),border:Border.all(color:Colors.white,width:size*0.025))))
-    ]));
+        decoration:BoxDecoration(color:const Color(0xFF70E3D3),borderRadius:BorderRadius.circular(size*0.06),border:Border.all(color:Colors.white,width:size*0.025))))]));
 }
-
-class Shell extends StatefulWidget {
-  const Shell({super.key, required this.state});
-  final AppState state;
-  @override State<Shell> createState() => _ShellState();
+class Shell extends StatefulWidget{
+  const Shell({super.key,required this.state});final AppState state;
+  @override State<Shell> createState()=>_ShellState();
 }
 
 class _ShellState extends State<Shell> {

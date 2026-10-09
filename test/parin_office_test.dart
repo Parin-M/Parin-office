@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
@@ -211,7 +212,7 @@ void main() {
     final source = await OfficeDocumentFactory.create(
       kind: OfficeKind.pdf,
       title: 'Conversion source',
-      body: 'Product Name     Price\\nNotebook        12\\nPen             3',
+      body: 'Product Name     Price\nNotebook        12\nPen             3',
       subtitle: '',
     );
     final word = await PdfToolsEngine.convertToOffice(

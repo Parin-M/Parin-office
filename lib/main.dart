@@ -32,7 +32,7 @@ class ThemeCatalog {
     final secondary=HSLColor.fromAHSL(1,(hue+18)%360,sat*0.78,(light+0.08).clamp(0.0,1.0)).toColor();
     return ThemePreset(name:families[f]+' '+(v+1).toString(),primary:primary,secondary:secondary,family:families[f]);
   });
-  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false}){
+  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false}){
     final dark=brightness==Brightness.dark;
     final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF101116):const Color(0xFFF5F7FB);
     final surface=amoled?const Color(0xFF000000):dark?const Color(0xFF191B22):Colors.white;
@@ -43,7 +43,7 @@ class ThemeCatalog {
       outline:dark?const Color(0xFF3D414C):const Color(0xFFE0E4EC),
       outlineVariant:dark?const Color(0xFF2C3039):const Color(0xFFE9ECF2));
     return ThemeData(
-      useMaterial3:true,brightness:brightness,colorScheme:scheme,scaffoldBackgroundColor:canvas,canvasColor:surface,
+      useMaterial3:true,visualDensity:compact?VisualDensity.compact:VisualDensity.standard,brightness:brightness,colorScheme:scheme,scaffoldBackgroundColor:canvas,canvasColor:surface,
       cardTheme:CardThemeData(color:surface,elevation:0,margin:EdgeInsets.zero,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(20),side:BorderSide(color:scheme.outlineVariant))),
       appBarTheme:AppBarTheme(centerTitle:false,elevation:0,scrolledUnderElevation:0,backgroundColor:canvas,surfaceTintColor:Colors.transparent,
         titleTextStyle:TextStyle(color:scheme.onSurface,fontSize:20,fontWeight:FontWeight.w800)),
@@ -134,6 +134,7 @@ class AppState extends ChangeNotifier {
   Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
     'textScale':textScale,'blueLightStrength':blueStrength,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
     'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
+    if(diagnostics) 'diagnosticsReport':{'build':'0.10','recentDocumentCount':recent.length,'draftRecovery':autoRecovery},
     'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent}};
 }
 class L10n {
@@ -307,8 +308,8 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
       localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],
       localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
-      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast),
-      darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast),
+      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon),
+      darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon),
       themeMode:state.mode==AppearanceMode.system?ThemeMode.system:state.mode==AppearanceMode.light?ThemeMode.light:ThemeMode.dark,
       builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
         child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
@@ -529,6 +530,16 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
     if(title.isEmpty){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Enter a document title first.')));return;}
     setState(()=>saving=true);
     try {
+      if(widget.state.safeSave){
+        final confirmed=await showDialog<bool>(context:context,builder:(context)=>AlertDialog(
+          title:const Text('Confirm export'),
+          content:Text('Create a new '+widget.kind.label+' file and open the save dialog?'),
+          actions:[
+            TextButton(onPressed:()=>Navigator.of(context).pop(false),child:Text(t('cancel'))),
+            FilledButton(onPressed:()=>Navigator.of(context).pop(true),child:const Text('Continue'))
+          ]));
+        if(!mounted||confirmed!=true)return;
+      }
       final bytes=await OfficeDocumentFactory.create(kind:widget.kind,title:title,body:bodyController.text,subtitle:subtitleController.text);
       if(!mounted)return;
       final name=title.replaceAll(RegExp(r'[\\/:*?"<>|]'),'').trim();
@@ -554,8 +565,9 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
         Container(width:35,height:35,decoration:BoxDecoration(color:widget.kind.color.withAlpha(24),borderRadius:BorderRadius.circular(11)),child:Icon(widget.kind.icon,color:widget.kind.color)),
         const SizedBox(width:10),Expanded(child:Text(t('newDoc')))]),
         actions:[IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close_rounded))]),
-      body:Center(child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:900),child:ListView(padding:const EdgeInsets.fromLTRB(20,12,20,32),children:[
-        Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.outlineVariant)),
+      body:Center(child:ConstrainedBox(constraints:BoxConstraints(maxWidth:widget.state.focusMode?720:900),child:ListView(padding:const EdgeInsets.fromLTRB(20,12,20,32),children:[
+        if(!widget.state.focusMode)
+          Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.outlineVariant)),
           child:Row(children:[const BrandMark(size:44),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(widget.kind.label,style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:4),Text(widget.kind.description,style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))]))])),
@@ -677,27 +689,53 @@ class RecentPage extends StatelessWidget {
 }
 
 class WorkspaceHome extends StatelessWidget {
-  const WorkspaceHome({super.key, required this.state, required this.openSettings});
-  final AppState state;final VoidCallback openSettings;
+  const WorkspaceHome({super.key,required this.state,required this.openSettings});
+  final AppState state;
+  final VoidCallback openSettings;
+
+  Widget _tile(BuildContext context,(IconData,String,String,VoidCallback) item) {
+    final theme=Theme.of(context);
+    return Card(clipBehavior:Clip.antiAlias,child:InkWell(
+      borderRadius:BorderRadius.circular(20),onTap:item.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+        Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(15)),
+          child:Icon(item.$1,color:theme.colorScheme.primary)),
+        const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Text(item.$2,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:4),
+          Text(item.$3,style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))])),
+        const Icon(Icons.arrow_forward_ios_rounded,size:15)
+      ]))));
+  }
+
   @override Widget build(BuildContext context) {
     final theme=Theme.of(context);
-    final cards=< (IconData,String,String,VoidCallback)>[
-      (Icons.note_add_outlined,'Create a document','PDF, Word, PowerPoint and Excel',()=>showModalBottomSheet<void>(context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:OfficeKind.values.map((kind)=>ListTile(leading:Icon(kind.icon,color:kind.color),title:Text(kind.label),onTap:(){Navigator.pop(ctx);Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>NewDocumentPage(kind:kind,state:state)));})).toList())))),
+    final cards=<(IconData,String,String,VoidCallback)>[
+      (Icons.note_add_outlined,'Create a document','PDF, Word, PowerPoint and Excel',()=>showModalBottomSheet<void>(
+        context:context,showDragHandle:true,builder:(ctx)=>SafeArea(child:Wrap(children:OfficeKind.values.map((kind)=>ListTile(
+          leading:Icon(kind.icon,color:kind.color),title:Text(kind.label),subtitle:Text(kind.description),
+          onTap:(){Navigator.pop(ctx);Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>NewDocumentPage(kind:kind,state:state)));})).toList())))),
       (Icons.palette_outlined,'Theme studio','128 coordinated color palettes',openSettings),
       (Icons.remove_red_eye_outlined,'Reading comfort','Optional blue-light filter',openSettings),
-      (Icons.translate_rounded,'Language and layout','Locale-aware layout with RTL support',openSettings),
+      (Icons.translate_rounded,'Language and layout','Locale-aware layout and RTL support',openSettings),
       (Icons.shield_outlined,'Privacy controls','Local drafts and recent-document settings',openSettings),
       (Icons.accessibility_new_rounded,'Accessibility','Text scaling and contrast controls',openSettings),
     ];
-    return Scaffold(appBar:AppBar(title:Text(L10n.text(state.locale,'workspace'))),body:ListView(padding:const EdgeInsets.all(20),children:[
-      Text('A toolkit that stays out of your way',style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
-      const SizedBox(height:8),Text('Shortcuts, appearance and preferences in one adaptive workspace.',style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
-      const SizedBox(height:22),
-      for(final card in cards)...[
-        Card(child:InkWell(borderRadius:BorderRadius.circular(20),onTap:card.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
-          Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(15)),child:Icon(card.$1,color:theme.colorScheme.primary)),
-          const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(card.$2,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:4),Text(card.$3,style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))])),
-          const Icon(Icons.arrow_forward_ios_rounded,size:15)])))),const SizedBox(height:10)]])
+    return Scaffold(
+      appBar:AppBar(title:Text(L10n.text(state.locale,'workspace'))),
+      body:ListView(padding:const EdgeInsets.all(20),children:[
+        Text('A toolkit that stays out of your way',style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+        const SizedBox(height:8),
+        Text('Shortcuts, appearance and preferences in an adaptive workspace.',style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
+        const SizedBox(height:22),
+        if(state.showGrid)
+          LayoutBuilder(builder:(context,c){
+            final cols=c.maxWidth>=1050?3:c.maxWidth>=590?2:1;
+            return GridView.builder(shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),itemCount:cards.length,
+              gridDelegate:SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:cols,crossAxisSpacing:12,mainAxisSpacing:12,childAspectRatio:2.35),
+              itemBuilder:(context,i)=>_tile(context,cards[i]));
+          })
+        else
+          for(final item in cards)...[_tile(context,item),const SizedBox(height:10)]
+      ])
     );
   }
 }

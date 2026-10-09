@@ -203,7 +203,9 @@ class _HelpCenterPageState extends State<HelpCenterPage> {
   @override
   Widget build(BuildContext context) {
     final articles = _articles().where((article) {
-      final categoryMatch = _category == 'All' || article.category == _category || (_category == 'Word' && article.category == 'عمومی' && _fa);
+      final articleCategory = article.category == 'عمومی' ? 'General' : article.category;
+      final selectedCategory = _category == 'عمومی' ? 'General' : _category;
+      final categoryMatch = selectedCategory == 'All' || articleCategory == selectedCategory;
       final query = _search.text.trim().toLowerCase();
       return categoryMatch && (query.isEmpty ||
           article.title.toLowerCase().contains(query) ||

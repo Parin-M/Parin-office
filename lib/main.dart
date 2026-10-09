@@ -1105,25 +1105,533 @@ class _OfficeWorkbenchState extends State<OfficeWorkbench>{
 
 class _Feature extends StatelessWidget{const _Feature(this.icon,this.title);final IconData icon;final String title;@override Widget build(BuildContext c)=>Card(child:InkWell(onTap:(){},child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(icon,size:30),const SizedBox(height:9),Text(title,style:const TextStyle(fontWeight:FontWeight.w800))]))));}
 
-class RecentPage extends StatelessWidget{
- const RecentPage({super.key});
- @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Recent documents')),body:ListView(padding:const EdgeInsets.all(22),children:const[
-  _Recent('Project proposal.docx','Word • edited recently',Icons.article_outlined),
-  _Recent('Strategy deck.pptx','PowerPoint • yesterday',Icons.slideshow_outlined),
-  _Recent('Financial model.xlsx','Excel • 2 days ago',Icons.grid_on_outlined),
-  _Recent('Research paper.pdf','PDF • 3 days ago',Icons.picture_as_pdf_outlined),
- ]));
+class RecentPage extends StatelessWidget {
+  const RecentPage({super.key, required this.state});
+  final AppState state;
+  @override
+  Widget build(BuildContext context) {
+    String t(String key) => L10n.text(state.locale, key);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t('recent')),
+        actions: [
+          if (state.recentDocuments.isNotEmpty)
+            IconButton(
+              tooltip: t('clearRecent'),
+              icon: const Icon(Icons.delete_sweep_outlined),
+              onPressed: () async {
+                await state.clearRecents();
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('clearRecent'))));
+              },
+            ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: state.recentDocuments.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.folder_open_rounded, size: 54, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 12),
+                  Text(t('noRecent'), style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 7),
+                  Text(t('recentSubtitle'), style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(onPressed: () => openRecentFile(context, state), icon: const Icon(Icons.folder_open_rounded), label: Text(t('open'))),
+                ]),
+              ),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(18),
+              itemCount: state.recentDocuments.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 9),
+              itemBuilder: (context, index) {
+                final name = state.recentDocuments[index];
+                final extension = name.split('.').last.toLowerCase();
+                final icon = switch (extension) {
+                  'pdf' => Icons.picture_as_pdf_rounded,
+                  'docx' => Icons.description_rounded,
+                  'pptx' => Icons.slideshow_rounded,
+                  'xlsx' => Icons.grid_on_rounded,
+                  _ => Icons.insert_drive_file_outlined,
+                };
+                final accent = switch (extension) {
+                  'pdf' => const Color(0xFFE84E68),
+                  'docx' => const Color(0xFF3478E5),
+                  'pptx' => const Color(0xFFEB8734),
+                  'xlsx' => const Color(0xFF1A9E75),
+                  _ => Theme.of(context).colorScheme.primary,
+                };
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(backgroundColor: accent.withValues(alpha: 0.13), child: Icon(icon, color: accent)),
+                    title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(state.flag('showExtensions') ? extension.toUpperCase() + ' • ' + t('onDevice') : t('onDevice')),
+                    trailing: const Icon(Icons.folder_open_rounded),
+                    onTap: () => openRecentFile(context, state),
+                  ),
+                );
+              },
+            ),
+    );
+  }
 }
-class _Recent extends StatelessWidget{const _Recent(this.title,this.subtitle,this.icon);final String title,subtitle;final IconData icon;@override Widget build(BuildContext c)=>Card(margin:const EdgeInsets.only(bottom:12),child:ListTile(leading:CircleAvatar(child:Icon(icon)),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(subtitle),trailing:const Icon(Icons.more_horiz_rounded)));}
 
-class WorkspaceHome extends StatelessWidget{
- const WorkspaceHome({super.key});
- @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Workspace')),body:GridView.count(crossAxisCount:MediaQuery.sizeOf(c).width>1000?4:2,padding:const EdgeInsets.all(22),crossAxisSpacing:14,mainAxisSpacing:14,children:const[
-  _Feature(Icons.description_outlined,'Documents'),_Feature(Icons.picture_as_pdf_outlined,'PDF Studio'),_Feature(Icons.table_chart_outlined,'Spreadsheet'),_Feature(Icons.slideshow_outlined,'Presentation'),_Feature(Icons.cloud_outlined,'Cloud space'),_Feature(Icons.favorite_border,'Favorites'),_Feature(Icons.folder_open,'Templates'),_Feature(Icons.auto_awesome_outlined,'AI tools'),
- ]));
+class WorkspaceHome extends StatelessWidget {
+  const WorkspaceHome({super.key, required this.state});
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    String t(String key) => L10n.text(state.locale, key);
+    final width = MediaQuery.sizeOf(context).width;
+    final items = <(IconData, String, Color, VoidCallback)>[
+      (Icons.picture_as_pdf_rounded, t('createPdf'), const Color(0xFFE84E68), () => launchCreate(context, state, initialKind: DocumentKind.pdf)),
+      (Icons.description_rounded, t('createWord'), const Color(0xFF3478E5), () => launchCreate(context, state, initialKind: DocumentKind.word)),
+      (Icons.slideshow_rounded, t('createPowerPoint'), const Color(0xFFEB8734), () => launchCreate(context, state, initialKind: DocumentKind.powerpoint)),
+      (Icons.grid_on_rounded, t('createExcel'), const Color(0xFF1A9E75), () => launchCreate(context, state, initialKind: DocumentKind.excel)),
+      (Icons.folder_open_rounded, t('open'), Theme.of(context).colorScheme.primary, () => openRecentFile(context, state)),
+      (Icons.palette_outlined, t('themes'), Theme.of(context).colorScheme.secondary, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(state: state, openAppearance: true)))),
+      (Icons.language_rounded, t('language'), const Color(0xFF765DE8), () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(state: state, openLanguage: true)))),
+      (Icons.tune_rounded, t('settings'), Theme.of(context).colorScheme.onSurfaceVariant, () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(state: state)))),
+    ];
+    return Scaffold(
+      appBar: AppBar(title: Text(t('workspace'))),
+      body: GridView.builder(
+        padding: EdgeInsets.all(width < 600 ? 15 : 24),
+        itemCount: items.length,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 290, mainAxisExtent: 145, crossAxisSpacing: 13, mainAxisSpacing: 13),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return Material(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(21),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(21),
+              onTap: item.$4,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(color: item.$3.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(15)),
+                    child: Icon(item.$1, color: item.$3),
+                  ),
+                  Row(children: [
+                    Expanded(child: Text(item.$2, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800))),
+                    const Icon(Icons.arrow_outward_rounded, size: 17),
+                  ]),
+                ]),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
 
-class SettingsPage extends StatelessWidget{
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key, required this.state, this.openAppearance = false, this.openLanguage = false});
+  final AppState state;
+  final bool openAppearance;
+  final bool openLanguage;
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  final themeSearch = TextEditingController();
+  final languageSearch = TextEditingController();
+  String family = 'All';
+  bool favoritesOnly = false;
+
+  String t(String key) => L10n.text(widget.state.locale, key);
+
+  @override
+  void dispose() {
+    themeSearch.dispose();
+    languageSearch.dispose();
+    super.dispose();
+  }
+
+  Widget section(String title, IconData icon, List<Widget> children, {bool expanded = false}) => Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    child: ExpansionTile(
+      initiallyExpanded: expanded,
+      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+      childrenPadding: const EdgeInsets.fromLTRB(14, 2, 14, 16),
+      children: children,
+    ),
+  );
+
+  Widget switchTile(String key) {
+    final state = widget.state;
+    return SwitchListTile.adaptive(
+      value: state.flag(key),
+      title: Text(t(key)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onChanged: (value) async {
+        if (state.flag('haptics')) HapticFeedback.selectionClick();
+        await state.setFlag(key, value);
+      },
+    );
+  }
+
+  List<ThemePreset> get visibleThemes {
+    final state = widget.state;
+    return ThemeCatalog.presets.where((preset) {
+      final query = themeSearch.text.toLowerCase();
+      return preset.name.toLowerCase().contains(query) &&
+          (family == 'All' || preset.family == family) &&
+          (!favoritesOnly || state.favoriteThemes.contains(preset.index));
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final locales = L10n.locales.where((locale) {
+      final index = L10n.locales.indexOf(locale);
+      final query = languageSearch.text.toLowerCase();
+      return L10n.names[index].toLowerCase().contains(query) || locale.languageCode.contains(query);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t('settings')),
+        actions: [
+          IconButton(
+            tooltip: t('blueFilter'),
+            onPressed: () => state.setFlag('blueLightFilter', !state.flag('blueLightFilter')),
+            icon: Icon(state.flag('blueLightFilter') ? Icons.wb_sunny_rounded : Icons.nightlight_round),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(width < 600 ? 12 : 22, 12, width < 600 ? 12 : 22, 42),
+        children: [
+          section(t('appearance'), Icons.palette_outlined, [
+            ListTile(
+              title: Text(t('selectedTheme')),
+              subtitle: Text(state.preset.name),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [state.preset.primary, state.preset.secondary]),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+              ),
+              trailing: Text((state.themeIndex + 1).toString() + '/128', style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w900)),
+            ),
+            const SizedBox(height: 3),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: AppearanceMode.values.map((mode) {
+                final label = switch (mode) {
+                  AppearanceMode.system => t('system'),
+                  AppearanceMode.light => t('light'),
+                  AppearanceMode.dark => t('dark'),
+                  AppearanceMode.amoled => t('amoled'),
+                };
+                final icon = switch (mode) {
+                  AppearanceMode.system => Icons.brightness_auto_rounded,
+                  AppearanceMode.light => Icons.light_mode_rounded,
+                  AppearanceMode.dark => Icons.dark_mode_rounded,
+                  AppearanceMode.amoled => Icons.contrast_rounded,
+                };
+                return ChoiceChip(
+                  avatar: Icon(icon, size: 18),
+                  label: Text(label),
+                  selected: state.mode == mode,
+                  onSelected: (_) => state.setMode(mode),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 13),
+            TextField(
+              controller: themeSearch,
+              onChanged: state.setThemeQuery,
+              decoration: InputDecoration(
+                labelText: t('search') + ' • ' + t('themes'),
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: themeSearch.text.isEmpty ? null : IconButton(
+                  onPressed: () {
+                    themeSearch.clear();
+                    state.setThemeQuery('');
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                ChoiceChip(label: Text(t('allThemes')), selected: family == 'All', onSelected: (_) => setState(() => family = 'All')),
+                const SizedBox(width: 7),
+                ...ThemeCatalog.families.map((item) => Padding(
+                  padding: const EdgeInsets.only(right: 7),
+                  child: ChoiceChip(label: Text(item), selected: family == item, onSelected: (_) => setState(() => family = item)),
+                )),
+              ]),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: favoritesOnly,
+              title: Text(t('favorites')),
+              subtitle: Text(state.favoriteThemes.length.toString() + ' saved palettes'),
+              onChanged: (value) => setState(() => favoritesOnly = value ?? false),
+            ),
+            SizedBox(
+              height: width < 550 ? 390 : 460,
+              child: GridView.builder(
+                key: const PageStorageKey<String>('theme-grid'),
+                itemCount: visibleThemes.length,
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: width < 550 ? 112 : 132,
+                  mainAxisExtent: 95,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final preset = visibleThemes[index];
+                  final selected = state.themeIndex == preset.index;
+                  final favorite = state.favoriteThemes.contains(preset.index);
+                  return Material(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: () async {
+                        await state.setTheme(preset.index);
+                        if (state.flag('haptics')) HapticFeedback.selectionClick();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: selected ? preset.primary : theme.colorScheme.outlineVariant, width: selected ? 2.2 : 1),
+                        ),
+                        child: Column(children: [
+                          Expanded(
+                            child: Stack(children: [
+                              Positioned.fill(child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [preset.primary, preset.secondary]),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                              )),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: InkResponse(
+                                  onTap: () => state.toggleFavoriteTheme(preset.index),
+                                  radius: 18,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: Icon(favorite ? Icons.star_rounded : Icons.star_border_rounded, size: 18, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                              if (selected) const Center(child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 24)),
+                            ]),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        ]),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (visibleThemes.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('No themes match this filter.')),
+          ], expanded: widget.openAppearance),
+          section(t('language'), Icons.language_rounded, [
+            ListTile(
+              leading: const Icon(Icons.translate_rounded),
+              title: Text(L10n.names[L10n.locales.indexOf(state.locale)]),
+              subtitle: Text(state.locale.toLanguageTag()),
+              trailing: const Icon(Icons.check_circle_rounded),
+            ),
+            TextField(
+              controller: languageSearch,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(labelText: t('search') + ' • ' + t('language'), prefixIcon: const Icon(Icons.search_rounded)),
+            ),
+            const SizedBox(height: 6),
+            ...locales.map((locale) {
+              final index = L10n.locales.indexOf(locale);
+              final selected = locale.toLanguageTag() == state.locale.toLanguageTag();
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 2),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(12)),
+                  child: Text(locale.languageCode.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                ),
+                title: Text(L10n.names[index]),
+                subtitle: Text(locale.toLanguageTag()),
+                trailing: selected ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary) : null,
+                onTap: () async {
+                  await state.setLocale(locale);
+                  if (state.flag('haptics')) HapticFeedback.selectionClick();
+                  if (mounted) setState(() {});
+                },
+              );
+            }),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Text('RTL direction is applied to Persian, Arabic and Hebrew. Navigation wraps and scales for longer translations.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ),
+          ], expanded: widget.openLanguage),
+          section(t('general'), Icons.tune_rounded, [
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4), child: Text(t('generalSubtitle'), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+            switchTile('autosave'),
+            switchTile('autoRecovery'),
+            switchTile('restoreDrafts'),
+            switchTile('haptics'),
+            switchTile('animations'),
+            switchTile('compactRibbon'),
+            switchTile('confirmExport'),
+            switchTile('showExtensions'),
+            switchTile('smartPunctuation'),
+            switchTile('spellAssist'),
+            switchTile('showStatusBar'),
+          ], expanded: true),
+          section(t('blueFilter'), Icons.nightlight_round, [
+            SwitchListTile.adaptive(
+              value: state.flag('blueLightFilter'),
+              title: Text(t('blueFilter')),
+              subtitle: Text(t('blueFilterSubtitle')),
+              secondary: const Icon(Icons.wb_twilight_rounded),
+              onChanged: (value) => state.setFlag('blueLightFilter', value),
+            ),
+            if (state.flag('blueLightFilter')) ...[
+              ListTile(title: Text(t('strength')), trailing: Text((state.blueStrength * 100).round().toString() + '%')),
+              Slider(value: state.blueStrength, min: 0.05, max: 1, divisions: 19, onChanged: (value) => state.setNumeric('blueStrength', value)),
+              Container(
+                height: 45,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFFE7F2FF), Color(0xFFFFE0A7), Color(0xFFFFB75A)]),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                ),
+                child: const Center(child: Text('Live filter preview', style: TextStyle(color: Color(0xFF1D2A40), fontWeight: FontWeight.w800))),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ], expanded: true),
+          section(t('editor'), Icons.edit_note_rounded, [
+            ListTile(title: Text(t('textScale')), trailing: Text((state.textScale * 100).round().toString() + '%')),
+            Slider(value: state.textScale, min: 0.85, max: 1.4, divisions: 11, onChanged: (value) => state.setNumeric('textScale', value)),
+            ListTile(title: Text(t('defaultZoom')), trailing: Text((state.defaultZoom * 100).round().toString() + '%')),
+            Slider(value: state.defaultZoom, min: 0.5, max: 1.5, divisions: 10, onChanged: (value) => state.setNumeric('defaultZoom', value)),
+            ListTile(title: Text(t('fontSize')), trailing: Text(state.editorFontSize.round().toString())),
+            Slider(value: state.editorFontSize, min: 12, max: 26, divisions: 14, onChanged: (value) => state.setNumeric('editorFontSize', value)),
+            switchTile('showRulers'),
+            switchTile('showGridlines'),
+            switchTile('smartPunctuation'),
+            switchTile('spellAssist'),
+          ]),
+          section(t('accessibility'), Icons.accessibility_new_rounded, [
+            switchTile('reduceMotion'),
+            switchTile('highContrast'),
+            ListTile(
+              title: Text(t('textScale')),
+              subtitle: Text((state.textScale * 100).round().toString() + '%'),
+              trailing: IconButton(tooltip: 'Reset', onPressed: () => state.setNumeric('textScale', 1), icon: const Icon(Icons.restart_alt_rounded)),
+            ),
+          ]),
+          section(t('performance'), Icons.speed_rounded, [
+            switchTile('lowMemoryMode'),
+            switchTile('previewThumbnails'),
+            switchTile('offlineOnly'),
+            switchTile('protectSourceFiles'),
+            ListTile(
+              leading: const Icon(Icons.memory_rounded),
+              title: const Text('Rendering profile'),
+              subtitle: Text(state.flag('lowMemoryMode') ? 'Conservative memory profile; live preview hidden' : 'Balanced mode with tablet preview'),
+            ),
+            if (state.flag('diagnostics'))
+              ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: const Text('Local diagnostics'),
+                subtitle: Text('Theme ' + (state.themeIndex + 1).toString() + ' · ' + state.locale.toLanguageTag() + ' · ' + ThemeCatalog.presets.length.toString() + ' palettes'),
+              ),
+          ]),
+          section(t('security'), Icons.security_rounded, [
+            switchTile('offlineOnly'),
+            switchTile('protectSourceFiles'),
+            switchTile('diagnostics'),
+            const ListTile(
+              leading: Icon(Icons.lock_outline_rounded),
+              title: Text('Privacy note'),
+              subtitle: Text('Document generation and drafts run locally. Cloud sync is not connected in this build.'),
+            ),
+          ]),
+          section(t('general'), Icons.storage_rounded, [
+            ListTile(
+              leading: const Icon(Icons.delete_sweep_outlined),
+              title: Text(t('clearRecent')),
+              subtitle: Text(state.recentDocuments.length.toString() + ' recent entries'),
+              onTap: () async {
+                await state.clearRecents();
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('clearRecent'))));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded),
+              title: Text(t('clearDrafts')),
+              subtitle: const Text('Remove local autosave recovery texts'),
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text(t('clearDrafts')),
+                    content: const Text('Saved recovery drafts will be removed from this device.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text(t('cancel'))),
+                      FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text(t('done'))),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await state.clearDrafts();
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('clearDrafts'))));
+                }
+              },
+            ),
+          ]),
+          section(t('about'), Icons.info_outline_rounded, [
+            const ListTile(
+              leading: BrandMark(size: 42),
+              title: Text('Parin Office'),
+              subtitle: Text('Version 0.10 · Flutter 3.47'),
+            ),
+            ListTile(title: Text(t('aboutText')), isThreeLine: true),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
+ extends StatelessWidget{
  const SettingsPage({super.key,required this.state});final AppState state;
  Widget section(String title,IconData icon,List<Widget> children)=>Card(child:ExpansionTile(initiallyExpanded:true,leading:Icon(icon),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),children:children));
  @override Widget build(BuildContext c){

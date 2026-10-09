@@ -754,7 +754,12 @@ class PdfPage extends StatelessWidget {
   const PdfPage({super.key, required this.bytes, required this.name});
   final Uint8List bytes;final String name;
   Future<void> save(Uint8List output) async {await FilePicker.saveFile(fileName:name,bytes:output,mimeType:'application/pdf',dialogTitle:'Save edited PDF');}
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
+  @override Widget build(BuildContext context)=>Scaffold(
+    appBar:AppBar(title:Text(name),actions:[
+      IconButton(tooltip:'PDF password and security tools',icon:const Icon(Icons.lock_outline_rounded),
+        onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>PdfSecurityToolsPage(bytes:bytes,fileName:name)))),
+      const SizedBox(width:5),
+    ]),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
 }
 
 Widget officeEditorPage(Uint8List bytes,String name) {
@@ -937,7 +942,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if(_matches(query,t('editor'),'spell grid focus safe save'))sections.add(_editor(context,state,t));
     if(_matches(query,t('security'),'privacy diagnostics local'))sections.add(_security(context,state,t));
     if(_matches(query,t('accessibility'),'blue light filter text scale contrast'))sections.add(_accessibility(context,state,t));
-    if(_matches(query,t('performance'),'responsive mode surfaces rendering'))sections.add(_performance(context,state,t));
+    if(_matches(query,t('performance'),'responsive mode surfaces rendering metro windows phone glass'))sections.add(_performance(context,state,t));
+    if(_matches(query,state.locale.languageCode=='fa'?'راهنما':'Help center','help office word excel powerpoint pdf shortcuts formulas animations transitions'))sections.add(_helpSection(context,state));
+    if(_matches(query,'About Parin Office','github open source GPL-3.0 license creator P Mashalchian ChatGPT'))sections.add(_aboutSection(context,state));
     return Scaffold(appBar:AppBar(title:Text(t('settings')),actions:[
       IconButton(tooltip:t('export'),onPressed:()=>_export(state,t),icon:const Icon(Icons.file_download_outlined)),const SizedBox(width:5)]),
       body:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,32),children:[
@@ -1094,6 +1101,36 @@ class _SettingsPageState extends State<SettingsPage> {
         Slider(value:state.textScale,min:0.85,max:1.35,divisions:10,onChanged:state.setTextScale)
       ])),
       _switchRow(state,'highContrast',t('contrast'),'Increase contrast across surfaces and boundaries.',icon:Icons.contrast_rounded),
+    ]);
+
+  Widget _helpSection(BuildContext context,AppState state)=>_section(
+    state.locale.languageCode=='fa'?'راهنمای کاربردی':'Help center',
+    state.locale.languageCode=='fa'?'راهنمای عملی Word، Excel، PowerPoint و PDF':'Practical how-to guides for Word, Excel, PowerPoint and PDF',
+    Icons.menu_book_outlined,[
+      ListTile(leading:const Icon(Icons.help_outline_rounded),
+        title:Text(state.locale.languageCode=='fa'?'باز کردن راهنمای کامل':'Open the full help center'),
+        subtitle:Text(state.locale.languageCode=='fa'?'فرمول‌ها، قالب‌بندی، ذخیره، انیمیشن و امنیت فایل':'Formulas, formatting, saving, animations and file security'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const HelpCenterPage()))),
+    ]);
+
+  Widget _aboutSection(BuildContext context,AppState state)=>_section(
+    state.locale.languageCode=='fa'?'دربارهٔ برنامه':'About Parin Office',
+    state.locale.languageCode=='fa'?'سازنده، مشارکت‌ها و مجوز متن‌باز':'Creator, contributors and open-source license',
+    Icons.info_outline_rounded,[
+      Padding(padding:const EdgeInsets.fromLTRB(12,8,12,4),child:Text(
+        state.locale.languageCode=='fa'
+          ?'با عشق روی زمین ساخته شده است. سازنده: پ مشعلچیان (P Mashalchian). در توسعهٔ این پروژه، هوش مصنوعی ChatGPT نیز کمک‌کننده بوده است.'
+          :'Made with love on Earth. Created by P Mashalchian. ChatGPT AI also assisted during the development of this project.',
+        style:Theme.of(context).textTheme.bodyMedium?.copyWith(height:1.55))),
+      ListTile(leading:const Icon(Icons.code_rounded),title:const Text('GitHub'),subtitle:const Text('Parin-M/Parin-office'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>launchUrl(Uri.parse('https://github.com/Parin-M/Parin-office'),mode:LaunchMode.externalApplication)),
+      const Divider(height:1),
+      ListTile(leading:const Icon(Icons.balance_rounded),title:const Text('GPL-3.0'),
+        subtitle:Text(state.locale.languageCode=='fa'?'این برنامه متن‌باز است و تحت مجوز GPL-3.0 منتشر شده است.':'Open-source software licensed under GPL-3.0.'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>launchUrl(Uri.parse('https://github.com/Parin-M/Parin-office/blob/main/LICENSE'),mode:LaunchMode.externalApplication)),
     ]);
 
   Widget _performance(BuildContext context,AppState state,String Function(String) t)=>_section(

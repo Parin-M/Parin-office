@@ -25,6 +25,11 @@ jobs:
       - name: Generate Android host
         run: flutter create --empty --platforms=android --org=com.parin.office .
 
+      - name: Set Android app name and package
+        run: |
+          sed -i 's/android:label="parin_office"/android:label="Parin Office"/' android/app/src/main/AndroidManifest.xml
+          sed -i 's/com\.parin\.office\.parin_office/com.parin.office/g' android/app/build.gradle
+
       - name: Prepare launcher icon assets
         run: |
           sudo apt-get update

@@ -6,7 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'document_factory.dart';
 
@@ -362,11 +362,14 @@ class _ShellState extends State<Shell> {
 
 class Dashboard extends StatelessWidget {
   const Dashboard({super.key,required this.state,required this.openSettings});
-  final AppState state;final VoidCallback openSettings;
+  final AppState state;
+  final VoidCallback openSettings;
+
   Future<void> openFile(BuildContext context) async {
-    final files=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:const['pdf','docx','pptx','xlsx'],withData:true);
-    if(!context.mounted||files==null||files.files.isEmpty)return;
-    final file=files.files.first;final bytes=file.bytes??await file.readAsBytes();
+    final files=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:const ['pdf','docx','pptx','xlsx']);
+    if(!context.mounted||files.isEmpty)return;
+    final file=files.first;
+    final bytes=await file.readAsBytes();
     if(!context.mounted)return;
     final ext=(file.extension??'').toLowerCase();
     final kind=switch(ext){'docx'=>OfficeKind.word,'pptx'=>OfficeKind.powerpoint,'xlsx'=>OfficeKind.excel,_=>OfficeKind.pdf};
@@ -378,73 +381,107 @@ class Dashboard extends StatelessWidget {
       Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>OfficePage(bytes:bytes,name:file.name,state:state)));
     }
   }
-  void create(BuildContext context,OfficeKind kind)=>Navigator.of(context).push(
-    MaterialPageRoute<void>(builder:(_)=>NewDocumentPage(kind:kind,state:state)));
 
-  @override Widget build(BuildContext context) {
-    final t=(String key)=>L10n.text(state.locale,key);final theme=Theme.of(context);
-    return Scaffold(
-      appBar:AppBar(title:Row(children:[const BrandMark(size:34),const SizedBox(width:10),const Text('Parin Office',style:TextStyle(fontWeight:FontWeight.w900))]),
-        actions:[IconButton(tooltip:t('open'),onPressed:()=>openFile(context),icon:const Icon(Icons.folder_open_rounded)),
-          IconButton(tooltip:t('settings'),onPressed:openSettings,icon:const Icon(Icons.tune_rounded)),const SizedBox(width:6)]),
-      body:CustomScrollView(slivers:[
-        SliverPadding(padding:const EdgeInsets.fromLTRB(20,18,20,20),sliver:SliverToBoxAdapter(
-          child:Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(
-            gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[
-              theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?52:28),
-              theme.colorScheme.secondary.withAlpha(theme.brightness==Brightness.dark?34:20),theme.colorScheme.surface]),
-            borderRadius:BorderRadius.circular(28),border:Border.all(color:theme.colorScheme.outlineVariant)),
-            child:LayoutBuilder(builder:(context,c) {
-              final content=Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:7),decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(24),borderRadius:BorderRadius.circular(50)),
-                  child:Text('YOUR WORKSPACE',style:TextStyle(color:theme.colorScheme.primary,fontSize:11,letterSpacing:1.2,fontWeight:FontWeight.w900))),
-                const SizedBox(height:16),Text(t('welcome'),style:theme.textTheme.headlineMedium?.copyWith(fontWeight:FontWeight.w900,height:1.12,letterSpacing:-0.5)),
-                const SizedBox(height:10),Text(t('welcomeSub'),style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.45)),
-                const SizedBox(height:22),Wrap(spacing:10,runSpacing:10,children:[
-                  FilledButton.icon(onPressed:()=>_showCreate(context),icon:const Icon(Icons.add_rounded),label:Text(t('create'))),
-                  OutlinedButton.icon(onPressed:()=>openFile(context),icon:const Icon(Icons.file_open_rounded),label:Text(t('open')))])]);
-              if(c.maxWidth<600)return content;
-              return Row(children:[Expanded(flex:7,child:content),const SizedBox(width:18),
-                Expanded(flex:3,child:Container(height:178,decoration:BoxDecoration(color:theme.colorScheme.surface.withAlpha(215),borderRadius:BorderRadius.circular(24)),
-                  child:Stack(alignment:Alignment.center,children:[
-                    Positioned(right:16,top:15,child:Icon(Icons.auto_awesome_rounded,color:theme.colorScheme.primary.withAlpha(145),size:27)),
-                    Transform.rotate(angle:-0.08,child:Container(width:100,height:130,padding:const EdgeInsets.all(17),
-                      decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(17),border:Border.all(color:theme.colorScheme.outlineVariant),
-                        boxShadow:[BoxShadow(color:theme.colorScheme.primary.withAlpha(24),blurRadius:25,offset:const Offset(0,10))]),
-                      child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                        Container(width:34,height:7,decoration:BoxDecoration(color:theme.colorScheme.primary,borderRadius:BorderRadius.circular(6))),
-                        const SizedBox(height:16),for(var i=0;i<4;i++)Container(width:i==3?38:63,height:4,margin:const EdgeInsets.only(bottom:8),decoration:BoxDecoration(color:theme.colorScheme.outlineVariant,borderRadius:BorderRadius.circular(5))),
-                        const Spacer(),Container(width:44,height:5,color:theme.colorScheme.secondary)]))]))]);
-            })))),
-        SliverPadding(padding:const EdgeInsets.fromLTRB(20,0,20,13),sliver:SliverToBoxAdapter(child:Row(children:[
-          Expanded(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
-          Text('04 FORMATS',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:1,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))]))),
-        SliverPadding(padding:const EdgeInsets.symmetric(horizontal:20),sliver:SliverGrid(
-          delegate:SliverChildBuilderDelegate((context,i){final kind=OfficeKind.values[i];return _DocTile(kind.label,kind.description,kind.icon,kind.color,()=>create(context,kind));},childCount:OfficeKind.values.length),
-          gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:390,mainAxisExtent:156,crossAxisSpacing:13,mainAxisSpacing:13))),
-        SliverPadding(padding:const EdgeInsets.fromLTRB(20,25,20,11),sliver:SliverToBoxAdapter(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)))),
-        SliverPadding(padding:const EdgeInsets.symmetric(horizontal:20),sliver:SliverToBoxAdapter(child:Wrap(spacing:9,runSpacing:9,children:[
-          ActionChip(avatar:const Icon(Icons.folder_open_rounded,size:18),label:Text(t('open')),onPressed:()=>openFile(context)),
-          ActionChip(avatar:const Icon(Icons.palette_outlined,size:18),label:Text(t('themes')),onPressed:openSettings),
-          ActionChip(avatar:const Icon(Icons.remove_red_eye_outlined,size:18),label:Text(t('blue')),onPressed:openSettings),
-        ])))),
-        SliverPadding(padding:const EdgeInsets.fromLTRB(20,24,20,30),sliver:SliverToBoxAdapter(child:Wrap(spacing:12,runSpacing:12,children:[
-          const _Metric(Icons.palette_outlined,'Themes','128 palettes'),const _Metric(Icons.translate_rounded,'Languages','16 locales'),
-          const _Metric(Icons.devices_rounded,'Layout','Phone + tablet'),const _Metric(Icons.shield_outlined,'Privacy','Local controls')]))),
-      ]),
-    );
+  void create(BuildContext context,OfficeKind kind) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>NewDocumentPage(kind:kind,state:state)));
   }
+
   void _showCreate(BuildContext context) {
     final t=(String key)=>L10n.text(state.locale,key);
     showModalBottomSheet<void>(context:context,showDragHandle:true,isScrollControlled:true,builder:(sheet)=>SafeArea(
       child:Padding(padding:const EdgeInsets.fromLTRB(18,8,18,24),child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.start,children:[
-        Text(t('newDoc'),style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:8),Text(t('welcomeSub')),const SizedBox(height:16),
-        for(final kind in OfficeKind.values)ListTile(
-          leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(14)),child:Icon(kind.icon,color:kind.color)),
-          title:Text(kind.label,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(kind.description),trailing:const Icon(Icons.arrow_forward_ios_rounded,size:16),
-          onTap:(){Navigator.of(sheet).pop();create(context,kind);})
+        Text(t('newDoc'),style:Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
+        const SizedBox(height:8),Text(t('welcomeSub')),const SizedBox(height:16),
+        for(final kind in OfficeKind.values)
+          ListTile(
+            leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(14)),child:Icon(kind.icon,color:kind.color)),
+            title:Text(kind.label,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(kind.description),
+            trailing:const Icon(Icons.arrow_forward_ios_rounded,size:16),
+            onTap:(){Navigator.of(sheet).pop();create(context,kind);})
       ]))));
   }
+
+  @override Widget build(BuildContext context) {
+    final t=(String key)=>L10n.text(state.locale,key);
+    final theme=Theme.of(context);
+    return Scaffold(
+      appBar:AppBar(
+        title:const Row(children:[BrandMark(size:34),SizedBox(width:10),Text('Parin Office',style:TextStyle(fontWeight:FontWeight.w900))]),
+        actions:[
+          IconButton(tooltip:t('open'),onPressed:()=>openFile(context),icon:const Icon(Icons.folder_open_rounded)),
+          IconButton(tooltip:t('settings'),onPressed:openSettings,icon:const Icon(Icons.tune_rounded)),
+          const SizedBox(width:6)]),
+      body:LayoutBuilder(builder:(context,constraints) {
+        final columns=constraints.maxWidth>=1050?4:constraints.maxWidth>=620?2:1;
+        return ListView(
+          padding:const EdgeInsets.fromLTRB(20,18,20,30),
+          children:[
+            Container(
+              padding:const EdgeInsets.all(24),
+              decoration:BoxDecoration(
+                gradient:LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:[
+                  theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?52:28),
+                  theme.colorScheme.secondary.withAlpha(theme.brightness==Brightness.dark?34:20),
+                  theme.colorScheme.surface]),
+                borderRadius:BorderRadius.circular(28),
+                border:Border.all(color:theme.colorScheme.outlineVariant)),
+              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),
+                  decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(24),borderRadius:BorderRadius.circular(50)),
+                  child:Text('YOUR WORKSPACE',style:TextStyle(color:theme.colorScheme.primary,fontSize:11,letterSpacing:1.2,fontWeight:FontWeight.w900))),
+                const SizedBox(height:16),
+                Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  const BrandMark(size:52),const SizedBox(width:14),
+                  Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                    Text(t('welcome'),style:theme.textTheme.headlineMedium?.copyWith(fontWeight:FontWeight.w900,height:1.12,letterSpacing:-0.5)),
+                    const SizedBox(height:10),
+                    Text(t('welcomeSub'),style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.45))
+                  ]))
+                ]),
+                const SizedBox(height:22),
+                Wrap(spacing:10,runSpacing:10,children:[
+                  FilledButton.icon(onPressed:_showCreate.bindContext(context),icon:const Icon(Icons.add_rounded),label:Text(t('create'))),
+                  OutlinedButton.icon(onPressed:()=>openFile(context),icon:const Icon(Icons.file_open_rounded),label:Text(t('open')))
+                ])
+              ])),
+            const SizedBox(height:24),
+            Row(children:[
+              Expanded(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
+              Text('04 FORMATS',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:1,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
+            ]),
+            const SizedBox(height:12),
+            GridView.builder(
+              shrinkWrap:true,
+              physics:const NeverScrollableScrollPhysics(),
+              itemCount:OfficeKind.values.length,
+              gridDelegate:SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:columns,crossAxisSpacing:13,mainAxisSpacing:13,childAspectRatio:columns==1?2.3:1.65),
+              itemBuilder:(context,i){
+                final kind=OfficeKind.values[i];
+                return _DocTile(kind.label,kind.description,kind.icon,kind.color,()=>create(context,kind));
+              }),
+            const SizedBox(height:23),
+            Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
+            const SizedBox(height:11),
+            Wrap(spacing:9,runSpacing:9,children:[
+              ActionChip(avatar:const Icon(Icons.folder_open_rounded,size:18),label:Text(t('open')),onPressed:()=>openFile(context)),
+              ActionChip(avatar:const Icon(Icons.palette_outlined,size:18),label:Text(t('themes')),onPressed:openSettings),
+              ActionChip(avatar:const Icon(Icons.remove_red_eye_outlined,size:18),label:Text(t('blue')),onPressed:openSettings)
+            ]),
+            const SizedBox(height:24),
+            Wrap(spacing:12,runSpacing:12,children:[
+              const _Metric(Icons.palette_outlined,'Themes','128 palettes'),
+              const _Metric(Icons.translate_rounded,'Languages','16 locales'),
+              const _Metric(Icons.devices_rounded,'Layout','Phone + tablet'),
+              const _Metric(Icons.shield_outlined,'Privacy','Local controls')
+            ])
+          ]);
+      }));
+  }
+}
+
+extension _CreateCallbackContext on void Function(BuildContext) {
+  VoidCallback bindContext(BuildContext context)=>()=>this(context);
 }
 
 class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
@@ -636,7 +673,7 @@ class RecentPage extends StatelessWidget {
         return Card(child:ListTile(contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:5),
           leading:CircleAvatar(backgroundColor:d.kind.color.withAlpha(24),child:Icon(d.kind.icon,color:d.kind.color)),
           title:Text(d.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w800)),
-          subtitle:Text('${d.kind.label} • ${DateFormat.yMMMd(state.locale.toLanguageTag()).format(d.updatedAt)}'),
+          subtitle:Text('${d.kind.label} • ${intl.DateFormat.yMMMd(state.locale.toString()).format(d.updatedAt)}'),
           trailing:IconButton(tooltip:'Remove from recent',icon:const Icon(Icons.close_rounded),onPressed:()=>state.removeRecent(d.name))));
       }));
   }

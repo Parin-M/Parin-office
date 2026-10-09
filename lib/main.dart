@@ -24,7 +24,7 @@ class ThemeCatalog {
   static const families=<String>['Ocean','Arctic','Mint','Forest','Sage','Lime','Sunset','Coral','Rose','Berry','Violet','Indigo','Midnight','Stone','Sand','Mono'];
   static const hues=<double>[214,194,164,145,112,84,26,8,342,320,276,244,225,210,37,0];
   static final presets=List<ThemePreset>.generate(128,(i){
-    final f=i~/8, v=i%8, neutral=f==15;
+    final f=i~/8; final v=i%8; final neutral=f==15;
     final hue=neutral?220.0:(hues[f]+v*3.2)%360;
     final sat=neutral?0.04:0.52+(v%3)*0.07;
     final light=0.37+(v%5)*0.045;
@@ -264,7 +264,7 @@ class L10n {
     'recovery':'Gjenopprett utkast','motion':'Bevegelse og overganger','haptics':'Haptisk tilbakemelding','compact':'Kompakte verktøylinjer',
     'keepRecent':'Behold nylige dokumenter','contrast':'Høy kontrast','spell':'Tekstforslag','grid':'Vis rutenett','focus':'Fokusredigerer',
     'safeSave':'Tryggere lagring','diagnostics':'Anonym diagnostikk','resetQuestion':'Tilbakestille appinnstillingene?','paletteHint':'128 koordinerte paletter for lys, mørk og AMOLED.','saved':'Filen er lagret','all':'Alle'};
-  static const is=<String,String>{
+  static const islandic=<String,String>{
     'home':'Heim','recent':'Nýlegt','workspace':'Vinnusvæði','settings':'Stillingar','open':'Opna skrá','create':'Búa til nýtt','newDoc':'Nýtt skjal',
     'welcome':'Skipulagt vinnusvæði fyrir mikilvæg verkefni','welcomeSub':'Búðu til, skipuleggðu og fluttu út skjöl á einum stað.','quick':'Flýtiaðgerðir',
     'appearance':'Útlit','themes':'Litþemu','language':'Tungumál','mode':'Skjástilling','system':'Kerfi','light':'Ljóst','dark':'Dökkt','amoled':'AMOLED-svart',
@@ -289,7 +289,7 @@ class L10n {
 
   static String text(Locale locale,String key){
     final table=switch(locale.languageCode){
-      'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,'da'=>da,'hi'=>hi,'he'=>he,'it'=>it,'sv'=>sv,'fi'=>fi,'no'=>no,'is'=>is,'el'=>el,_=>en};
+      'fa'=>fa,'ar'=>ar,'de'=>de,'es'=>es,'tr'=>tr,'da'=>da,'hi'=>hi,'he'=>he,'it'=>it,'sv'=>sv,'fi'=>fi,'no'=>no,'is'=>islandic,'el'=>el,_=>en};
     return table[key]??en[key]??key;
   }
   static bool rtl(Locale l)=>const {'fa','ar','he'}.contains(l.languageCode);
@@ -756,7 +756,7 @@ class _SettingsPageState extends State<SettingsPage> {
       SizedBox(height:310,child:GridView.builder(itemCount:presets.length,
         gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:114,mainAxisExtent:86,crossAxisSpacing:9,mainAxisSpacing:9),
         itemBuilder:(context,i){
-          final preset=presets[i],selected=state.preset.name==presets[i].name;
+          final preset=presets[i]; final selected=state.preset.name==presets[i].name;
           return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(16),
             onTap:()=>state.setTheme(ThemeCatalog.presets.indexOf(preset)),
             child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:theme.colorScheme.surface,

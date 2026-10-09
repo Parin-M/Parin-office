@@ -16,6 +16,7 @@ dependencies:
   intl: ^0.20.3
   dart_pdf_editor: ^7.0.0
   flutter_quill: ^11.6.0
+  quds_office_editor: 0.5.1
   excel_plus: ^2.27.1
   archive: ^4.2.0
   pdf: ^3.13.1

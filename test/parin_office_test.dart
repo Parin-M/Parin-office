@@ -8,6 +8,7 @@ import 'package:parin_office/main.dart';
 import 'package:parin_office/office_editor_codec.dart';
 import 'package:excel_plus/excel_plus.dart' as xls;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:quds_office_editor/quds_office_editor.dart';
 
 void main() {
   test('Parin Office provides 128 named, categorized theme presets', () {
@@ -130,6 +131,38 @@ void main() {
     final restored = await xls.Excel.decodeBytesAsync(saved!);
     expect(restored.tables.keys, contains('Sheet1'));
     expect(restored['Sheet1'].cell(xls.CellIndex.indexByString('A1')).value, isA<xls.IntCellValue>());
+  });
+
+  test('Embedded offline engine opens and round-trips DOCX, XLSX, and PPTX', () async {
+    final wordBytes = await OfficeDocumentFactory.create(
+      kind: OfficeKind.word,
+      title: 'Offline word',
+      body: 'A real local engine',
+      subtitle: '',
+    );
+    final word = WordEditorController.fromBytes(wordBytes);
+    expect(await word.saveBytesAsync(), isNotEmpty);
+    word.dispose();
+
+    final sheetBytes = await OfficeDocumentFactory.create(
+      kind: OfficeKind.excel,
+      title: 'Offline sheet',
+      body: 'Name,Value\\nPen,3\\nBook,7',
+      subtitle: '',
+    );
+    final sheet = SheetEditorController.fromBytes(sheetBytes);
+    expect(await sheet.saveBytesAsync(), isNotEmpty);
+    sheet.dispose();
+
+    final slidesBytes = await OfficeDocumentFactory.create(
+      kind: OfficeKind.powerpoint,
+      title: 'Offline slides',
+      body: 'First point\\nSecond point',
+      subtitle: 'Local',
+    );
+    final slides = SlideEditorController.fromBytes(slidesBytes);
+    expect(await slides.saveBytesAsync(), isNotEmpty);
+    slides.dispose();
   });
 
   test('Create PDF returns a PDF document', () async {

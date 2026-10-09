@@ -13,15 +13,16 @@ Parin Office is an adaptive Android office workspace built with Flutter for phon
 - Searchable settings with persistent toggles, high contrast, text scale, editor font/line-spacing controls, dashboard personalization, settings export and reset.
 - Local draft recovery, recent-document history, optional confirmation before recent-item removal, and opt-in haptics/animations.
 - PDF creation and the existing PDF editor integration.
-- **Word editor:** rich-text editing with bold/italic/underline/strike, font size and color controls, headings, alignment, lists, links, undo/redo, search, find/replace, word count, page size/orientation/margins, focus mode, zoom and DOCX export.
-- **Excel editor:** open XLSX and legacy XLS, edit cells through a grid/formula bar, evaluate formulas, format cell text and fills, find/replace, insert rows/columns, add worksheets, freeze panes, filters, column charts, CSV export and XLSX save.
-- **PowerPoint editor:** extract text from imported PPTX slides into editable title/body fields, create/duplicate/delete/reorder slides, change slide backgrounds and accent colors, choose slide layouts, preview slides and export a multi-slide PPTX.
+- **Embedded offline Office engine:** DOCX, XLSX, and PPTX are parsed, edited, laid out, and serialized on the device by the bundled Dart engine/editor packages. Editing does not call a document server, cloud conversion service, or login endpoint.
+- **Word editor (DOCX):** paginated document canvas; text editing and formatting; tables and cell operations; pictures and other supported visuals; headers/footers; footnotes/endnotes; comments; hyperlinks; lists; equations; rulers; find/replace; undo/redo; print and PDF export.
+- **Excel editor (XLSX):** virtualized spreadsheet canvas; cell editing and formula bar; formula recalculation; number formats; merges; freeze panes; charts; drawings; data validation; filters and sorting; find/replace; undo/redo; print and PDF export. Legacy **XLS** files continue through the compatibility editor.
+- **PowerPoint editor (PPTX):** editable slide stage with move/resize/rotate handles; text, tables, pictures, charts and z-order; animations and slide transitions supported by the engine; presenter/slideshow controls; notes; undo/redo; print and PDF export.
 
 ## Scope and import-fidelity notes
 
-These are native, offline editing workspaces, not a claim of full Microsoft Office equivalence. Word import currently reconstructs an editable text document from paragraph text, so arbitrary source pictures, embedded objects, tables, comments, tracked changes and complex section formatting are not round-tripped. PowerPoint import extracts slide text and rebuilds a supported title/body slide model; original animations, transitions, speaker notes, media, SmartArt, charts and complex object geometry are not preserved. Excel uses an actual workbook engine with formula evaluation and style editing; unsupported Excel functions or advanced workbook objects may not recalculate or round-trip exactly. Keep a copy of critical originals and verify complex documents in a full office suite before relying on the output.
+The OOXML editing path is fully on-device: documents remain local unless the user deliberately shares or exports them. The embedded engine is a new third-party package and is not Microsoft Office or LibreOffice; file fidelity is feature-dependent. Formats such as DOCX/XLSX/PPTX are supported by this engine, but VBA/macros, Power Query/Power Pivot, ActiveX, some uncommon formula functions, some uncommon font/image encodings, and vendor-specific extensions are not equivalent to desktop Microsoft Office. Legacy XLS still uses the compatibility editor. Keep a copy of critical originals and verify mission-critical complex files in a full office suite before relying on the output.
 
-Cloud sync, app lock, AI/OCR services, VBA/macros, collaborative editing and full-fidelity OOXML round-trip for every feature are not included in this offline build.
+The engine packages are MIT-licensed, but newly released software can still contain format edge cases; regression tests cover local open/save of representative DOCX/XLSX/PPTX files, not every Office feature or file. There is no cloud sync, collaboration service, OCR service, or AI service in the offline editor path.
 
 The blue-light tint is an optional in-app overlay. It does not change the device display's system-level color temperature, and it can be disabled or set to zero strength.
 
@@ -39,4 +40,4 @@ flutter build apk --release --split-per-abi --no-tree-shake-icons
 flutter build apk --release --no-tree-shake-icons
 ```
 
-The project does not artificially pad the APK to an arbitrary size; release size should grow only when real engines, fonts and offline assets are added.
+The on-device OOXML engine and its bundled font assets are included in the app build. APK size may therefore grow with genuine editing/rendering functionality; the project does not artificially pad releases.

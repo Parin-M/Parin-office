@@ -84,7 +84,7 @@ def erase_rect(canvas: bytearray, x: int, y: int, w: int, h: int) -> None:
     for py in range(y0, y1):
         start = (py * SIZE + x0) * 4
         end = (py * SIZE + x1) * 4
-        canvas[start:end] = b"\\x00" * (end - start)
+        canvas[start:end] = bytes(end - start)
 
 
 def paint_mark(canvas: bytearray, foreground: bool = False, monochrome: bool = False) -> None:

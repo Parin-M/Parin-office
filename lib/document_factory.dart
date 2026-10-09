@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 
 enum OfficeKind { pdf, word, powerpoint, excel }
@@ -57,7 +58,7 @@ class OfficeDocumentFactory {
       case OfficeKind.pdf:
         final document = pw.Document();
         document.addPage(pw.MultiPage(
-          pageFormat: pw.PdfPageFormat.a4,
+          pageFormat: pdf.PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(48),
           build: (_) => [
             pw.Header(

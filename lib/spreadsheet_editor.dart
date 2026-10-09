@@ -166,12 +166,27 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
     replace.dispose();
   }
 
-  void _styleSelected({bool? bold, String? fill}) {
+  void _styleSelected({
+    bool? bold,
+    bool? italic,
+    xls.Underline? underline,
+    String? fill,
+    xls.HorizontalAlign? align,
+    xls.TextWrapping? wrapping,
+    xls.NumFormat? numberFormat,
+    int? fontSize,
+  }) {
     final cell = _sheet.cell(_selectedIndex);
     final previous = cell.cellStyle ?? xls.CellStyle();
     cell.cellStyle = previous.copyWith(
-      boldVal: bold ?? previous.isBold,
+      boldVal: bold,
+      italicVal: italic,
+      underlineVal: underline,
       backgroundColorHexVal: fill == null ? null : xls.ExcelColor.fromHexString(fill),
+      horizontalAlignVal: align,
+      textWrappingVal: wrapping,
+      numberFormat: numberFormat,
+      fontSizeVal: fontSize,
     );
     setState(() {});
   }
@@ -264,9 +279,62 @@ class _SpreadsheetEditorPageState extends State<SpreadsheetEditorPage> {
           ]),
         ),
         SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
-          IconButton(tooltip: 'Bold selected cell', onPressed: () => _styleSelected(bold: !(_sheet.cell(_selectedIndex).cellStyle?.isBold ?? false)), icon: const Icon(Icons.format_bold)),
+          IconButton(
+            tooltip: 'Bold',
+            onPressed: () => _styleSelected(bold: !(_sheet.cell(_selectedIndex).cellStyle?.isBold ?? false)),
+            icon: const Icon(Icons.format_bold),
+          ),
+          IconButton(
+            tooltip: 'Italic',
+            onPressed: () => _styleSelected(italic: !(_sheet.cell(_selectedIndex).cellStyle?.isItalic ?? false)),
+            icon: const Icon(Icons.format_italic),
+          ),
+          IconButton(
+            tooltip: 'Underline',
+            onPressed: () => _styleSelected(
+              underline: _sheet.cell(_selectedIndex).cellStyle?.underline == xls.Underline.Single
+                  ? xls.Underline.None
+                  : xls.Underline.Single,
+            ),
+            icon: const Icon(Icons.format_underline),
+          ),
           IconButton(tooltip: 'Highlight selected cell', onPressed: () => _styleSelected(fill: '#FFF2CC'), icon: const Icon(Icons.format_color_fill)),
-          IconButton(tooltip: 'Header style', onPressed: () => _styleSelected(bold: true, fill: '#DCE8FF'), icon: const Icon(Icons.table_chart_outlined)),
+          IconButton(tooltip: 'Header style', onPressed: () => _styleSelected(bold: true, fill: '#DCE8FF', align: xls.HorizontalAlign.Center), icon: const Icon(Icons.table_chart_outlined)),
+          PopupMenuButton<String>(
+            tooltip: 'Alignment, wrapping and number format',
+            icon: const Icon(Icons.tune),
+            onSelected: (value) {
+              switch (value) {
+                case 'left': _styleSelected(align: xls.HorizontalAlign.Left); break;
+                case 'center': _styleSelected(align: xls.HorizontalAlign.Center); break;
+                case 'right': _styleSelected(align: xls.HorizontalAlign.Right); break;
+                case 'wrap': _styleSelected(wrapping: xls.TextWrapping.WrapText); break;
+                case 'clip': _styleSelected(wrapping: xls.TextWrapping.Clip); break;
+                case 'percent': _styleSelected(numberFormat: xls.NumFormat.standard_10); break;
+                case 'currency': _styleSelected(numberFormat: xls.NumFormat.standard_44); break;
+                case 'date': _styleSelected(numberFormat: xls.NumFormat.custom(formatCode: 'yyyy-mm-dd')); break;
+                case 'font10': _styleSelected(fontSize: 10); break;
+                case 'font12': _styleSelected(fontSize: 12); break;
+                case 'font14': _styleSelected(fontSize: 14); break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'left', child: Text('Align left')),
+              PopupMenuItem(value: 'center', child: Text('Align center')),
+              PopupMenuItem(value: 'right', child: Text('Align right')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'wrap', child: Text('Wrap text')),
+              PopupMenuItem(value: 'clip', child: Text('Clip text')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'percent', child: Text('Percentage format')),
+              PopupMenuItem(value: 'currency', child: Text('Accounting format')),
+              PopupMenuItem(value: 'date', child: Text('Date format')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'font10', child: Text('Font size 10')),
+              PopupMenuItem(value: 'font12', child: Text('Font size 12')),
+              PopupMenuItem(value: 'font14', child: Text('Font size 14')),
+            ],
+          ),
           const SizedBox(width: 8),
           ActionChip(avatar: const Icon(Icons.calculate_outlined, size: 17), label: const Text('Recalculate'), onPressed: () { _workbook!.recalculate(); setState(() {}); }),
           ActionChip(avatar: const Icon(Icons.add_chart_outlined, size: 17), label: const Text('Insert chart'), onPressed: _insertChart),

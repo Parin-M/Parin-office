@@ -634,8 +634,15 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Speaker notes'),
-        content: TextField(controller: notes, minLines: 4, maxLines: 9, autofocus: true,
-          decoration: const InputDecoration(hintText: 'Notes for the presenter; not shown as slide content.')),
+        content: TextField(
+          controller: notes,
+          minLines: 4,
+          maxLines: 9,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Notes for the presenter; not shown as slide content.',
+          ),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save notes')),
@@ -875,7 +882,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     final controller = _controller;
     if (controller == null) return const [];
     if (_isSlides && _ribbonTab == 'Transitions') return [
-      _toolButton('Choose transition effect and timing', Icons.transition_rounded, _configureTransition),
+      _toolButton('Choose transition effect and timing', Icons.swap_horiz_rounded, _configureTransition),
       _toolButton('Preview current transition', Icons.preview_rounded, () { _slides?.previewTransition(); setState(() {}); }),
       _toolButton('Apply transition to all slides', Icons.library_add_check_outlined, () => _configureTransition(applyAllDefault: true)),
     ];
@@ -899,7 +906,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       _dropdownTool('Slide background', 'Choose color', const ['FFFFFF', '101426', 'EAF1FF', 'E7F7F1', 'FFF4E3', 'F8EAF4'],
         (hex) { _slides?.applyMasterBackground(hex); setState(() {}); }, width: 140),
       _toolButton('Preview transition', Icons.preview_rounded, () => _slides?.previewTransition()),
-      _toolButton('Transition settings', Icons.transition_rounded, _configureTransition),
+      _toolButton('Transition settings', Icons.swap_horiz_rounded, _configureTransition),
     ];
     if (_isSlides && _ribbonTab == 'Insert') return [
       _toolButton('Insert 3 × 3 table on slide', Icons.table_chart_outlined, () => _slides?.insertTable(rows: 3, cols: 3)),
@@ -1019,3 +1026,279 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     final icon = _isWord ? Icons.description_outlined : _isSheet ? Icons.grid_on_rounded : Icons.slideshow_rounded;
     return Container(
       height: 59,
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 10, 3),
+      color: theme.colorScheme.surface,
+      child: Row(children: [
+        _toolButton('Back', Icons.arrow_back_rounded, () => Navigator.of(context).maybePop()),
+        Container(
+          width: 37, height: 41,
+          decoration: BoxDecoration(color: accent.withAlpha(25), borderRadius: BorderRadius.circular(8)),
+          child: Icon(icon, color: accent, size: 26),
+        ),
+        const SizedBox(width: 9),
+        Expanded(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.fileName, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500)),
+            Row(children: [
+              Icon(_saving ? Icons.sync_rounded : (_controller?.isDirty == true ? Icons.edit_outlined : Icons.cloud_done_outlined),
+                size: 13, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Flexible(child: Text(
+                _saving ? 'Saving…' : (_controller?.isDirty == true ? 'Unsaved changes' : 'Saved on this device'),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )),
+            ]),
+          ],
+        )),
+        _toolButton(_starred ? 'Remove star' : 'Star document', _starred ? Icons.star_rounded : Icons.star_border_rounded,
+          () => setState(() => _starred = !_starred), selected: _starred),
+        if (_isWide)
+          OutlinedButton.icon(
+            onPressed: _loading || _saving || _error != null ? null : _shareAsPdf,
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+            label: const Text('PDF'),
+            style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 10)),
+          ),
+        const SizedBox(width: 5),
+        FilledButton.icon(
+          onPressed: _loading || _saving || _error != null ? null : _save,
+          icon: _saving ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.save_outlined, size: 18),
+          label: Text(_isWide ? 'Save' : ''),
+          style: FilledButton.styleFrom(minimumSize: const Size(40, 37), padding: const EdgeInsets.symmetric(horizontal: 9), visualDensity: VisualDensity.compact),
+        ),
+      ]),
+    );
+  }
+
+  Widget _menuBar() {
+    final menus = <String>['File', 'Edit', 'View', 'Insert', 'Format', 'Tools', 'Help'];
+    return Container(
+      height: 34,
+      color: Theme.of(context).colorScheme.surface,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsetsDirectional.only(start: 50, end: 10),
+        child: Row(children: menus.map((menu) => PopupMenuButton<String>(
+          tooltip: menu,
+          onSelected: (value) => unawaited(_executeAction(value)),
+          itemBuilder: (_) => _menuOptions(menu).map((action) => PopupMenuItem<String>(
+            value: action, child: Text(_actionLabel(action)),
+          )).toList(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+            child: Text(menu, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface)),
+          ),
+        )).toList()),
+      ),
+    );
+  }
+
+  Widget _toolbar() => Container(
+    height: 48,
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+    ),
+    child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: _toolbarActions())),
+  );
+
+  Widget _sideEntry(String label, IconData icon, VoidCallback action) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(9),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(9),
+          onTap: action,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(children: [
+              Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+              const Icon(Icons.chevron_right_rounded, size: 17),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sidebar() {
+    final theme = Theme.of(context);
+    final title = _isWord ? 'Document outline' : _isSheet ? 'Sheet tools' : 'Presentation tools';
+    return Container(
+      width: 224,
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(15, 15, 8, 10),
+          child: Row(children: [
+            Expanded(child: Text(title, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
+            _toolButton('Hide side panel', Icons.chevron_left_rounded, () => setState(() => _sidebarOpen = false)),
+          ]),
+        ),
+        if (_isWord) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Text('Use heading styles to organize this document.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4)),
+          ),
+          const SizedBox(height: 12),
+          _sideEntry('Find in document', Icons.search_rounded, () => _executeAction('find')),
+          _sideEntry('Heading 1', Icons.title_rounded, () => _executeAction('heading1')),
+          _sideEntry('Insert table', Icons.table_chart_outlined, () => _executeAction('table')),
+          _sideEntry('Page size · A4', Icons.stay_current_portrait_outlined, () => _executeAction('pageA4')),
+          _sideEntry('Add review comment', Icons.comment_outlined, () => _executeAction('comment')),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              _word!.laidOut.pages.length.toString() + ' page(s)',
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ] else if (_isSheet) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Text('Workbook tools', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+          const SizedBox(height: 12),
+          _sideEntry('Recalculate formulas', Icons.calculate_outlined, () => _executeAction('recalculate')),
+          _sideEntry('Freeze top row', Icons.vertical_align_top_rounded, () => _executeAction('freezeRow')),
+          _sideEntry('Freeze first column', Icons.vertical_align_center_rounded, () => _executeAction('freezeColumn')),
+          _sideEntry('Find in workbook', Icons.search_rounded, () => _executeAction('find')),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Text('Cell ' + _sheet!.selectionAddress, style: theme.textTheme.labelSmall),
+          ),
+        ] else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Text('Slide canvas and thumbnails are available in the workspace.',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.4)),
+          ),
+          const SizedBox(height: 12),
+          _sideEntry('Start slideshow', Icons.slideshow_rounded, () => _executeAction('startShow')),
+          _sideEntry('Previous slide', Icons.skip_previous_rounded, () => _executeAction('previousSlide')),
+          _sideEntry('Next slide', Icons.skip_next_rounded, () => _executeAction('nextSlide')),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Text('Slide ' + (_slides!.activeSlideIndex + 1).toString(), style: theme.textTheme.labelSmall),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _documentSurface() {
+    if (_word != null) {
+      return QudsWordEditor(
+        controller: _word!,
+        toolbarBuilder: (context, controller) => const SizedBox.shrink(),
+        statusBarBuilder: (context, controller) => const SizedBox.shrink(),
+      );
+    }
+    if (_sheet != null) {
+      return QudsSheetEditor(controller: _sheet!, frozenRows: 0, frozenCols: 0);
+    }
+    if (_slides != null) {
+      return QudsSlideEditor(controller: _slides!);
+    }
+    return const SizedBox.shrink();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surfaceContainerLowest,
+      body: SafeArea(
+        child: Column(children: [
+          _header(),
+          Divider(height: 1, color: theme.colorScheme.outlineVariant),
+          _menuBar(),
+          _ribbonTabs(),
+          _toolbar(),
+          Expanded(
+            child: _error != null
+                ? Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 620),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.description_outlined, size: 52),
+                          const SizedBox(height: 14),
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'No upload or server conversion was attempted. The original file has not been overwritten.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ]),
+                      ),
+                    ),
+                  )
+                : _loading
+                    ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 14),
+                        Text(_progress),
+                      ]))
+                    : Row(children: [
+                        if (_sidebarOpen && _isWide) _sidebar(),
+                        Expanded(child: Container(
+                          color: theme.colorScheme.surfaceContainerLowest,
+                          child: _documentSurface(),
+                        )),
+                      ]),
+          ),
+          Container(
+            height: 29,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
+            ),
+            child: Row(children: [
+              if (!_sidebarOpen && _isWide)
+                _toolButton('Show side panel', Icons.menu_open_rounded, () => setState(() => _sidebarOpen = true)),
+              Icon(controller?.isDirty == true ? Icons.edit_outlined : Icons.cloud_done_outlined,
+                  size: 14, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(child: Text(
+                [
+                  controller?.isDirty == true ? 'Unsaved changes' : 'All changes saved on device',
+                  if (_isWord) 'Word',
+                  if (_isSheet) 'Sheet ' + (_sheet!.activeSheetIndex + 1).toString() + ' · ' + _sheet!.selectionAddress,
+                  if (_isSlides) 'Slide ' + (_slides!.activeSlideIndex + 1).toString(),
+                  'Offline engine',
+                ].join('   •   '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              )),
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+String _safeName(String value) {
+  final cleaned = value.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
+  return cleaned.isEmpty ? 'Parin-Office' : cleaned;
+}

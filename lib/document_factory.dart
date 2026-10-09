@@ -73,7 +73,7 @@ class DocumentFactory {
               pw.Container(
                 height: 4,
                 width: 76,
-                color: const PdfColor(0.08, 0.34, 0.86),
+                color: const pw.PdfColor(0.08, 0.34, 0.86),
               ),
               pw.SizedBox(height: 24),
               ...content.split(RegExp(r'\r?\n')).map(
@@ -81,7 +81,7 @@ class DocumentFactory {
                       padding: const pw.EdgeInsets.only(bottom: 8),
                       child: pw.Text(
                         line.isEmpty ? ' ' : line,
-                        style: const pw.TextStyle(fontSize: 12, lineSpacing: 4),
+                        style: const pw.TextStyle(fontSize: 12),
                       ),
                     ),
                   ),

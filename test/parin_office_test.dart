@@ -30,6 +30,21 @@ void main() {
     expect(dark.colorScheme.onSurface, const Color(0xFFF2F5FA));
   });
 
+  test('Metro themes include Liquid Glass while preserving all 128 palettes', () {
+    expect(AppearanceMode.values, contains(AppearanceMode.liquidGlass));
+    expect(ThemeCatalog.presets, hasLength(128));
+    final glass = ThemeCatalog.build(
+      ThemeCatalog.presets.first,
+      Brightness.light,
+      false,
+      liquidGlass: true,
+    );
+    expect(glass.cardTheme.elevation, 2);
+    expect(glass.colorScheme.surface.alpha, lessThan(255));
+    final metro = ThemeCatalog.build(ThemeCatalog.presets.first, Brightness.light, false);
+    expect(metro.cardTheme.shape, isA<RoundedRectangleBorder>());
+  });
+
   test('New settings labels resolve for all supported locales', () {
     for (final locale in L10n.locales) {
       expect(L10n.text(locale, 'fontFamily'), isNot('fontFamily'));

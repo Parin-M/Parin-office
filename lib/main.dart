@@ -11,6 +11,9 @@ import 'word_editor.dart';
 import 'spreadsheet_editor.dart';
 import 'presentation_editor.dart';
 import 'embedded_office_editor.dart';
+import 'help_center.dart';
+import 'pdf_security_tools.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:quds_office_editor/quds_office_editor.dart' show OfficeHostFonts;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
@@ -19,7 +22,7 @@ import 'document_factory.dart';
 
 Future<void> main() async { WidgetsFlutterBinding.ensureInitialized(); await intl_data.initializeDateFormatting(); await OfficeHostFonts.ensureRegistered(); runApp(const ParinOfficeApp()); }
 
-enum AppearanceMode { system, light, dark, amoled }
+enum AppearanceMode { system, light, liquidGlass, dark, amoled }
 
 class ThemePreset {
   const ThemePreset({required this.name,required this.primary,required this.secondary,required this.family});
@@ -46,7 +49,7 @@ class ThemeCatalog {
     final inkContrast=(luminance+0.05)/(ink.computeLuminance()+0.05);
     return inkContrast>=whiteContrast?ink:Colors.white;
   }
-  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false}){
+  static ThemeData build(ThemePreset preset,Brightness brightness,bool amoled,{bool highContrast=false,bool compact=false,bool liquidGlass=false,bool metro=true}){
     final dark=brightness==Brightness.dark;
     final source=HSLColor.fromColor(preset.primary);
     final sourceSecondary=HSLColor.fromColor(preset.secondary);
@@ -57,11 +60,11 @@ class ThemeCatalog {
     final secondary=dark
       ?sourceSecondary.withLightness(0.73).toColor()
       :sourceSecondary.withLightness(sourceSecondary.lightness.clamp(0.34,0.44).toDouble()).toColor();
-    final canvas=amoled?const Color(0xFF000000):dark?const Color(0xFF0B0F16):const Color(0xFFF5F7FB);
-    final surface=amoled?const Color(0xFF080B11):dark?const Color(0xFF141923):Colors.white;
-    final raised=amoled?const Color(0xFF10141D):dark?const Color(0xFF1C2330):Colors.white;
-    final field=amoled?const Color(0xFF10141D):dark?const Color(0xFF1A202B):const Color(0xFFF1F4F9);
-    final outline=dark?const Color(0xFF4B5565):const Color(0xFFD6DCE7);
+    final canvas=amoled?const Color(0xFF000000):liquidGlass?const Color(0xFFE5ECF5):dark?const Color(0xFF0B0F16):const Color(0xFFF5F7FB);
+    final surface=amoled?const Color(0xFF080B11):liquidGlass?const Color(0xDFFFFFFF):dark?const Color(0xFF141923):Colors.white;
+    final raised=amoled?const Color(0xFF10141D):liquidGlass?const Color(0xD9FFFFFF):dark?const Color(0xFF1C2330):Colors.white;
+    final field=amoled?const Color(0xFF10141D):liquidGlass?const Color(0xCFFFFFFF):dark?const Color(0xFF1A202B):const Color(0xFFF1F4F9);
+    final outline=dark?const Color(0xFF4B5565):liquidGlass?const Color(0x99FFFFFF):const Color(0xFFD6DCE7);
     final outlineVariant=dark?const Color(0xFF303847):const Color(0xFFE2E7EF);
     final scheme=ColorScheme.fromSeed(
       seedColor:primary,
@@ -94,10 +97,10 @@ class ThemeCatalog {
       canvasColor:surface,
       cardTheme:CardThemeData(
         color:raised,
-        elevation:0,
+        elevation:liquidGlass?2:0,
         margin:EdgeInsets.zero,
         shape:RoundedRectangleBorder(
-          borderRadius:BorderRadius.circular(18),
+          borderRadius:BorderRadius.circular(metro?7:18),
           side:BorderSide(color:outlineVariant),
         ),
       ),
@@ -114,30 +117,31 @@ class ThemeCatalog {
         filled:true,
         fillColor:field,
         contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),
-        border:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
-        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:outlineVariant)),
-        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(15),borderSide:BorderSide(color:primary,width:1.6)),
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:outlineVariant)),
+        enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:outlineVariant)),
+        focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(metro?5:15),borderSide:BorderSide(color:primary,width:1.6)),
       ),
       filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(
         foregroundColor:scheme.onPrimary,
         backgroundColor:primary,
         minimumSize:const Size(44,46),
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:15)),
         textStyle:const TextStyle(fontWeight:FontWeight.w800),
       )),
       outlinedButtonTheme:OutlinedButtonThemeData(style:OutlinedButton.styleFrom(
         minimumSize:const Size(44,44),
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(15)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:15)),
         side:BorderSide(color:outline),
       )),
       chipTheme:ChipThemeData(
-        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(13)),
+        shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:13)),
         side:BorderSide(color:outlineVariant),
         padding:const EdgeInsets.symmetric(horizontal:6,vertical:5),
       ),
       navigationBarTheme:NavigationBarThemeData(
         backgroundColor:surface,
         indicatorColor:primary.withAlpha(dark?56:28),
+        indicatorShape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(metro?5:16)),
         elevation:0,
         labelTextStyle:WidgetStateProperty.resolveWith((states)=>TextStyle(
           fontSize:12,
@@ -151,8 +155,8 @@ class ThemeCatalog {
         selectedIconTheme:IconThemeData(color:primary),
         unselectedIconTheme:IconThemeData(color:scheme.onSurfaceVariant),
       ),
-      snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(16))),
-      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(22))),
+      snackBarTheme:SnackBarThemeData(behavior:SnackBarBehavior.floating,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(6))),
+      dialogTheme:DialogThemeData(backgroundColor:surface,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(6))),
       bottomSheetTheme:BottomSheetThemeData(backgroundColor:surface,showDragHandle:true),
       switchTheme:SwitchThemeData(
         thumbColor:WidgetStateProperty.resolveWith((states)=>states.contains(WidgetState.selected)?scheme.onPrimary:scheme.onSurfaceVariant),
@@ -253,7 +257,7 @@ class AppState extends ChangeNotifier {
     for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent','showWordCount','smartCapitalization','openRecentOnStart','showWelcomePanel','showQuickActions','showDashboardMetrics','confirmRecentRemoval','editorFontFamily','lineSpacing','autoSaveDelay','defaultFontSize']){await p.remove(key);}
     notifyListeners();
   }
-  Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
+  Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,'designStyle':'Metro UI',
     'textScale':textScale,'blueLightStrength':blueStrength,'editorFontFamily':editorFontFamily,'lineSpacing':lineSpacing,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
     'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
     if(diagnostics) 'diagnosticsReport':{'build':'0.10','recentDocumentCount':recent.length,'draftRecovery':autoRecovery},
@@ -452,9 +456,9 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
       localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate,FlutterQuillLocalizations.delegate],
       localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
-      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon),
+      theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon,liquidGlass:state.mode==AppearanceMode.liquidGlass),
       darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon),
-      themeMode:state.mode==AppearanceMode.system?ThemeMode.system:state.mode==AppearanceMode.light?ThemeMode.light:ThemeMode.dark,
+      themeMode:state.mode==AppearanceMode.system?ThemeMode.system:(state.mode==AppearanceMode.dark||state.mode==AppearanceMode.amoled)?ThemeMode.dark:ThemeMode.light,
       builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
         child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
           child:Stack(fit:StackFit.expand,children:[child??const SizedBox.shrink(),
@@ -483,11 +487,10 @@ class _ShellState extends State<Shell> {
     final t=(String key)=>L10n.text(widget.state.locale,key);
     final items=<(IconData,String)>[
       (Icons.space_dashboard_rounded,t('home')),(Icons.history_rounded,t('recent')),
-      (Icons.grid_view_rounded,t('workspace')),(Icons.tune_rounded,t('settings'))];
+      (Icons.tune_rounded,t('settings'))];
     final pages=<Widget>[
-      Dashboard(state:widget.state,openSettings:()=>setState(()=>index=3)),
-      RecentPage(state:widget.state),WorkspaceHome(state:widget.state,openSettings:()=>setState(()=>index=3)),
-      SettingsPage(state:widget.state)];
+      Dashboard(state:widget.state,openSettings:()=>setState(()=>index=2)),
+      RecentPage(state:widget.state),SettingsPage(state:widget.state)];
     return LayoutBuilder(builder:(context,c) {
       final desktop=c.maxWidth>=900,extended=c.maxWidth>=1180;
       final page=AnimatedSwitcher(duration:widget.state.animations?const Duration(milliseconds:220):Duration.zero,
@@ -539,7 +542,7 @@ class Dashboard extends StatelessWidget {
         const SizedBox(height:8),Text(t('welcomeSub')),const SizedBox(height:16),
         for(final kind in OfficeKind.values)
           ListTile(
-            leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(14)),child:Icon(kind.icon,color:kind.color)),
+            leading:Container(width:44,height:44,decoration:BoxDecoration(color:kind.color.withAlpha(24),borderRadius:BorderRadius.circular(5)),child:Icon(kind.icon,color:kind.color)),
             title:Text(kind.label,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(kind.description),
             trailing:const Icon(Icons.arrow_forward_ios_rounded,size:16),
             onTap:(){Navigator.of(sheet).pop();create(context,kind);})
@@ -568,7 +571,7 @@ class Dashboard extends StatelessWidget {
                   theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?52:28),
                   theme.colorScheme.secondary.withAlpha(theme.brightness==Brightness.dark?34:20),
                   theme.colorScheme.surface]),
-                borderRadius:BorderRadius.circular(28),
+                borderRadius:BorderRadius.circular(6),
                 border:Border.all(color:theme.colorScheme.outlineVariant)),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Container(padding:const EdgeInsets.symmetric(horizontal:11,vertical:7),
@@ -626,7 +629,7 @@ class Dashboard extends StatelessWidget {
 }
 
 
-class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
+class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(6)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
 class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}
 
 class NewDocumentPage extends StatefulWidget {
@@ -715,7 +718,7 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
         actions:[IconButton(onPressed:()=>Navigator.of(context).maybePop(),icon:const Icon(Icons.close_rounded))]),
       body:Center(child:ConstrainedBox(constraints:BoxConstraints(maxWidth:widget.state.focusMode?720:900),child:ListView(padding:const EdgeInsets.fromLTRB(20,12,20,32),children:[
         if(!widget.state.focusMode)
-          Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.outlineVariant)),
+          Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:theme.colorScheme.surface,borderRadius:BorderRadius.circular(6),border:Border.all(color:theme.colorScheme.outlineVariant)),
           child:Row(children:[const BrandMark(size:44),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(widget.kind.label,style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:4),Text(widget.kind.description,style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant))]))])),
@@ -751,7 +754,12 @@ class PdfPage extends StatelessWidget {
   const PdfPage({super.key, required this.bytes, required this.name});
   final Uint8List bytes;final String name;
   Future<void> save(Uint8List output) async {await FilePicker.saveFile(fileName:name,bytes:output,mimeType:'application/pdf',dialogTitle:'Save edited PDF');}
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
+  @override Widget build(BuildContext context)=>Scaffold(
+    appBar:AppBar(title:Text(name),actions:[
+      IconButton(tooltip:'PDF password and security tools',icon:const Icon(Icons.lock_outline_rounded),
+        onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>PdfSecurityToolsPage(bytes:bytes,fileName:name)))),
+      const SizedBox(width:5),
+    ]),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
 }
 
 Widget officeEditorPage(Uint8List bytes,String name) {
@@ -869,8 +877,8 @@ class WorkspaceHome extends StatelessWidget {
   Widget _tile(BuildContext context,(IconData,String,String,VoidCallback) item) {
     final theme=Theme.of(context);
     return Card(clipBehavior:Clip.antiAlias,child:InkWell(
-      borderRadius:BorderRadius.circular(20),onTap:item.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
-        Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(15)),
+      borderRadius:BorderRadius.circular(6),onTap:item.$4,child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[
+        Container(width:48,height:48,decoration:BoxDecoration(color:theme.colorScheme.primary.withAlpha(22),borderRadius:BorderRadius.circular(5)),
           child:Icon(item.$1,color:theme.colorScheme.primary)),
         const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
           Text(item.$2,style:const TextStyle(fontWeight:FontWeight.w900)),const SizedBox(height:4),
@@ -934,13 +942,15 @@ class _SettingsPageState extends State<SettingsPage> {
     if(_matches(query,t('editor'),'spell grid focus safe save'))sections.add(_editor(context,state,t));
     if(_matches(query,t('security'),'privacy diagnostics local'))sections.add(_security(context,state,t));
     if(_matches(query,t('accessibility'),'blue light filter text scale contrast'))sections.add(_accessibility(context,state,t));
-    if(_matches(query,t('performance'),'responsive mode surfaces rendering'))sections.add(_performance(context,state,t));
+    if(_matches(query,t('performance'),'responsive mode surfaces rendering metro windows phone glass'))sections.add(_performance(context,state,t));
+    if(_matches(query,state.locale.languageCode=='fa'?'راهنما':'Help center','help office word excel powerpoint pdf shortcuts formulas animations transitions'))sections.add(_helpSection(context,state));
+    if(_matches(query,'About Parin Office','github open source GPL-3.0 license creator P Mashalchian ChatGPT'))sections.add(_aboutSection(context,state));
     return Scaffold(appBar:AppBar(title:Text(t('settings')),actions:[
       IconButton(tooltip:t('export'),onPressed:()=>_export(state,t),icon:const Icon(Icons.file_download_outlined)),const SizedBox(width:5)]),
       body:ListView(padding:const EdgeInsets.fromLTRB(18,10,18,32),children:[
         Container(padding:const EdgeInsets.all(17),decoration:BoxDecoration(
           color:theme.colorScheme.primary.withAlpha(theme.brightness==Brightness.dark?32:16),
-          borderRadius:BorderRadius.circular(22),border:Border.all(color:theme.colorScheme.primary.withAlpha(48))),
+          borderRadius:BorderRadius.circular(6),border:Border.all(color:theme.colorScheme.primary.withAlpha(48))),
           child:Row(children:[const BrandMark(size:46),const SizedBox(width:13),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
             Text(t('appearance'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),
             const SizedBox(height:4),Text(t('paletteHint'),style:theme.textTheme.bodySmall?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.4))]))])),
@@ -960,7 +970,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _section(String title,String subtitle,IconData icon,List<Widget> children)=>Card(clipBehavior:Clip.antiAlias,
     child:Theme(data:Theme.of(context).copyWith(dividerColor:Colors.transparent),child:ExpansionTile(
       initiallyExpanded:true,tilePadding:const EdgeInsets.symmetric(horizontal:15,vertical:3),childrenPadding:const EdgeInsets.fromLTRB(12,0,12,14),
-      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(13)),
+      leading:Container(width:40,height:40,decoration:BoxDecoration(color:Theme.of(context).colorScheme.primary.withAlpha(20),borderRadius:BorderRadius.circular(5)),
         child:Icon(icon,color:Theme.of(context).colorScheme.primary)),
       title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),subtitle:Text(subtitle,maxLines:2,overflow:TextOverflow.ellipsis),children:children)));
 
@@ -973,6 +983,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final modes=<(AppearanceMode,String,IconData)>[
       (AppearanceMode.system,t('system'),Icons.settings_brightness_rounded),
       (AppearanceMode.light,t('light'),Icons.light_mode_outlined),
+      (AppearanceMode.liquidGlass,state.locale.languageCode=='fa'?'لیکویید گلس':'Liquid glass',Icons.blur_on_rounded),
       (AppearanceMode.dark,t('dark'),Icons.dark_mode_outlined),
       (AppearanceMode.amoled,t('amoled'),Icons.contrast_rounded)];
     final presets=ThemeCatalog.presets.where((p){
@@ -1003,10 +1014,10 @@ class _SettingsPageState extends State<SettingsPage> {
         gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:114,mainAxisExtent:86,crossAxisSpacing:9,mainAxisSpacing:9),
         itemBuilder:(context,i){
           final preset=presets[i]; final selected=state.preset.name==presets[i].name;
-          return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(16),
+          return Semantics(button:true,selected:selected,label:preset.name,child:InkWell(borderRadius:BorderRadius.circular(6),
             onTap:()=>state.setTheme(ThemeCatalog.presets.indexOf(preset)),
             child:Container(padding:const EdgeInsets.all(8),decoration:BoxDecoration(color:theme.colorScheme.surface,
-              borderRadius:BorderRadius.circular(16),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
+              borderRadius:BorderRadius.circular(6),border:Border.all(color:selected?theme.colorScheme.primary:theme.colorScheme.outlineVariant,width:selected?2:1)),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 Expanded(child:ClipRRect(borderRadius:BorderRadius.circular(10),child:Row(children:[
                   Expanded(child:ColoredBox(color:preset.primary)),Expanded(child:ColoredBox(color:preset.secondary)),
@@ -1090,6 +1101,36 @@ class _SettingsPageState extends State<SettingsPage> {
         Slider(value:state.textScale,min:0.85,max:1.35,divisions:10,onChanged:state.setTextScale)
       ])),
       _switchRow(state,'highContrast',t('contrast'),'Increase contrast across surfaces and boundaries.',icon:Icons.contrast_rounded),
+    ]);
+
+  Widget _helpSection(BuildContext context,AppState state)=>_section(
+    state.locale.languageCode=='fa'?'راهنمای کاربردی':'Help center',
+    state.locale.languageCode=='fa'?'راهنمای عملی Word، Excel، PowerPoint و PDF':'Practical how-to guides for Word, Excel, PowerPoint and PDF',
+    Icons.menu_book_outlined,[
+      ListTile(leading:const Icon(Icons.help_outline_rounded),
+        title:Text(state.locale.languageCode=='fa'?'باز کردن راهنمای کامل':'Open the full help center'),
+        subtitle:Text(state.locale.languageCode=='fa'?'فرمول‌ها، قالب‌بندی، ذخیره، انیمیشن و امنیت فایل':'Formulas, formatting, saving, animations and file security'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>const HelpCenterPage()))),
+    ]);
+
+  Widget _aboutSection(BuildContext context,AppState state)=>_section(
+    state.locale.languageCode=='fa'?'دربارهٔ برنامه':'About Parin Office',
+    state.locale.languageCode=='fa'?'سازنده، مشارکت‌ها و مجوز متن‌باز':'Creator, contributors and open-source license',
+    Icons.info_outline_rounded,[
+      Padding(padding:const EdgeInsets.fromLTRB(12,8,12,4),child:Text(
+        state.locale.languageCode=='fa'
+          ?'با عشق روی زمین ساخته شده است. سازنده: پ مشعلچیان (P Mashalchian). در توسعهٔ این پروژه، هوش مصنوعی ChatGPT نیز کمک‌کننده بوده است.'
+          :'Made with love on Earth. Created by P Mashalchian. ChatGPT AI also assisted during the development of this project.',
+        style:Theme.of(context).textTheme.bodyMedium?.copyWith(height:1.55))),
+      ListTile(leading:const Icon(Icons.code_rounded),title:const Text('GitHub'),subtitle:const Text('Parin-M/Parin-office'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>launchUrl(Uri.parse('https://github.com/Parin-M/Parin-office'),mode:LaunchMode.externalApplication)),
+      const Divider(height:1),
+      ListTile(leading:const Icon(Icons.balance_rounded),title:const Text('GPL-3.0'),
+        subtitle:Text(state.locale.languageCode=='fa'?'این برنامه متن‌باز است و تحت مجوز GPL-3.0 منتشر شده است.':'Open-source software licensed under GPL-3.0.'),
+        trailing:const Icon(Icons.open_in_new_rounded),
+        onTap:()=>launchUrl(Uri.parse('https://github.com/Parin-M/Parin-office/blob/main/LICENSE'),mode:LaunchMode.externalApplication)),
     ]);
 
   Widget _performance(BuildContext context,AppState state,String Function(String) t)=>_section(

@@ -73,6 +73,8 @@ class AppState extends ChangeNotifier {
   double textScale=1,blueStrength=0.48;
   bool autosave=true,animations=true,haptics=true,compactRibbon=false,diagnostics=false;
   bool autoRecovery=true,blueLightFilter=false,highContrast=false,spellCheck=true,showGrid=true,focusMode=false,safeSave=true,keepRecent=true;
+  bool showWordCount=true,smartCapitalization=true,openRecentOnStart=false;
+  double autoSaveDelay=0.45,defaultFontSize=16;
   List<RecentDocument> recent=<RecentDocument>[];
   ThemePreset get preset=>ThemeCatalog.presets[themeIndex.clamp(0,127)];
   bool get amoled=>mode==AppearanceMode.amoled;
@@ -80,7 +82,7 @@ class AppState extends ChangeNotifier {
     'autosave'=>autosave,'animations'=>animations,'haptics'=>haptics,'compact'=>compactRibbon,
     'diagnostics'=>diagnostics,'autoRecovery'=>autoRecovery,'blueLightFilter'=>blueLightFilter,
     'highContrast'=>highContrast,'spellCheck'=>spellCheck,'showGrid'=>showGrid,'focusMode'=>focusMode,
-    'safeSave'=>safeSave,'keepRecent'=>keepRecent,_=>false};
+    'safeSave'=>safeSave,'keepRecent'=>keepRecent,'showWordCount'=>showWordCount,'smartCapitalization'=>smartCapitalization,'openRecentOnStart'=>openRecentOnStart,_=>false};
   Future<void> load() async {
     final p=await SharedPreferences.getInstance();
     final raw=p.getString('locale')??'en';final parts=raw.split('-');
@@ -95,12 +97,16 @@ class AppState extends ChangeNotifier {
     blueLightFilter=p.getBool('blueLightFilter')??false;highContrast=p.getBool('highContrast')??false;
     spellCheck=p.getBool('spellCheck')??true;showGrid=p.getBool('showGrid')??true;
     focusMode=p.getBool('focusMode')??false;safeSave=p.getBool('safeSave')??true;keepRecent=p.getBool('keepRecent')??true;
+    showWordCount=p.getBool('showWordCount')??true;smartCapitalization=p.getBool('smartCapitalization')??true;openRecentOnStart=p.getBool('openRecentOnStart')??false;
+    autoSaveDelay=(p.getDouble('autoSaveDelay')??0.45).clamp(0.2,2.0);defaultFontSize=(p.getDouble('defaultFontSize')??16).clamp(13,22);
     try { final value=p.getString('recentDocuments'); if(value!=null)recent=(jsonDecode(value) as List<dynamic>).whereType<Map<String,dynamic>>().map(RecentDocument.fromJson).take(20).toList(); } catch (_) {recent=<RecentDocument>[];}
   }
   Future<void> setLocale(Locale v) async {locale=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('locale',v.toLanguageTag());}
   Future<void> setMode(AppearanceMode v) async {mode=v;notifyListeners();final p=await SharedPreferences.getInstance();await p.setString('mode',v.name);}
   Future<void> setTheme(int v) async {themeIndex=v.clamp(0,127);notifyListeners();final p=await SharedPreferences.getInstance();await p.setInt('theme',themeIndex);if(haptics)await HapticFeedback.selectionClick();}
   Future<void> setTextScale(double v) async {textScale=v.clamp(0.85,1.35);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('textScale',textScale);}
+  Future<void> setAutoSaveDelay(double v) async {autoSaveDelay=v.clamp(0.2,2.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('autoSaveDelay',autoSaveDelay);}
+  Future<void> setDefaultFontSize(double v) async {defaultFontSize=v.clamp(13,22);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('defaultFontSize',defaultFontSize);}
   Future<void> setBlueStrength(double v) async {blueStrength=v.clamp(0.0,1.0);notifyListeners();final p=await SharedPreferences.getInstance();await p.setDouble('blueStrength',blueStrength);}
   Future<void> setFlag(String key,bool v) async {
     switch(key){
@@ -108,6 +114,7 @@ class AppState extends ChangeNotifier {
       case 'compact': compactRibbon=v; break; case 'diagnostics': diagnostics=v; break; case 'autoRecovery': autoRecovery=v; break;
       case 'blueLightFilter': blueLightFilter=v; break; case 'highContrast': highContrast=v; break; case 'spellCheck': spellCheck=v; break;
       case 'showGrid': showGrid=v; break; case 'focusMode': focusMode=v; break; case 'safeSave': safeSave=v; break; case 'keepRecent': keepRecent=v; break;
+      case 'showWordCount': showWordCount=v; break; case 'smartCapitalization': smartCapitalization=v; break; case 'openRecentOnStart': openRecentOnStart=v; break;
     }
     notifyListeners();final p=await SharedPreferences.getInstance();await p.setBool(key,v);
   }
@@ -127,15 +134,16 @@ class AppState extends ChangeNotifier {
   Future<void> resetPreferences() async {
     final p=await SharedPreferences.getInstance();locale=const Locale('en');mode=AppearanceMode.system;themeIndex=0;textScale=1;blueStrength=0.48;
     autosave=true;animations=true;haptics=true;compactRibbon=false;diagnostics=false;autoRecovery=true;blueLightFilter=false;highContrast=false;
-    spellCheck=true;showGrid=true;focusMode=false;safeSave=true;keepRecent=true;
-    for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent']){await p.remove(key);}
+    spellCheck=true;showGrid=true;focusMode=false;safeSave=true;keepRecent=true;showWordCount=true;smartCapitalization=true;openRecentOnStart=false;autoSaveDelay=0.45;defaultFontSize=16;
+    for(final key in ['locale','mode','theme','textScale','blueStrength','autosave','animations','haptics','compact','diagnostics','autoRecovery','blueLightFilter','highContrast','spellCheck','showGrid','focusMode','safeSave','keepRecent','showWordCount','smartCapitalization','openRecentOnStart','autoSaveDelay','defaultFontSize']){await p.remove(key);}
     notifyListeners();
   }
   Map<String,Object?> exportablePreferences()=>{'language':locale.toLanguageTag(),'appearance':mode.name,'theme':preset.name,'themeIndex':themeIndex,
     'textScale':textScale,'blueLightStrength':blueStrength,'settings':{'autosave':autosave,'animations':animations,'haptics':haptics,
     'compactRibbon':compactRibbon,'autoRecovery':autoRecovery,'blueLightFilter':blueLightFilter,'highContrast':highContrast,
     if(diagnostics) 'diagnosticsReport':{'build':'0.10','recentDocumentCount':recent.length,'draftRecovery':autoRecovery},
-    'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent}};
+    'diagnostics':diagnostics,'spellCheck':spellCheck,'showGrid':showGrid,'focusMode':focusMode,'safeSave':safeSave,'keepRecent':keepRecent,
+    'showWordCount':showWordCount,'smartCapitalization':smartCapitalization,'openRecentOnStart':openRecentOnStart,'autoSaveDelay':autoSaveDelay,'defaultFontSize':defaultFontSize}};
 }
 class L10n {
   static const locales=<Locale>[Locale('fa'),Locale('en'),Locale('da'),Locale('de'),Locale('de','CH'),Locale('ar'),Locale('hi'),Locale('he'),Locale('es'),Locale('it'),Locale('sv'),Locale('fi'),Locale('no'),Locale('is'),Locale('el'),Locale('tr')];
@@ -334,7 +342,7 @@ class Shell extends StatefulWidget{
 }
 
 class _ShellState extends State<Shell> {
-  int index=0;
+  late int index=widget.state.openRecentOnStart&&widget.state.recent.isNotEmpty?1:0;
   @override Widget build(BuildContext context) {
     final t=(String key)=>L10n.text(widget.state.locale,key);
     final items=<(IconData,String)>[
@@ -520,7 +528,8 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
   void _queueDraft(){
     timer?.cancel();
     if(!widget.state.autosave)return;
-    timer=Timer(const Duration(milliseconds:450),()=>widget.state.saveDraft(widget.kind,title:titleController.text,body:bodyController.text,subtitle:subtitleController.text));
+    if(mounted)setState((){});
+    timer=Timer(Duration(milliseconds:(widget.state.autoSaveDelay*1000).round()),()=>widget.state.saveDraft(widget.kind,title:titleController.text,body:bodyController.text,subtitle:subtitleController.text));
   }
   @override void dispose(){timer?.cancel();titleController.dispose();bodyController.dispose();subtitleController.dispose();super.dispose();}
 
@@ -576,11 +585,18 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
         if(widget.kind==OfficeKind.powerpoint)...[
           const SizedBox(height:13),TextField(controller:subtitleController,textInputAction:TextInputAction.next,decoration:InputDecoration(labelText:t('subtitle'),prefixIcon:const Icon(Icons.short_text_rounded)))],
         const SizedBox(height:13),
-        TextField(controller:bodyController,minLines:widget.kind==OfficeKind.excel?9:12,maxLines:24,keyboardType:TextInputType.multiline,autocorrect:widget.state.spellCheck,
+        TextField(controller:bodyController,minLines:widget.kind==OfficeKind.excel?9:12,maxLines:24,keyboardType:TextInputType.multiline,
+          textCapitalization:widget.state.smartCapitalization?TextCapitalization.sentences:TextCapitalization.none,
+          style:TextStyle(fontSize:widget.state.defaultFontSize),autocorrect:widget.state.spellCheck,
           decoration:InputDecoration(alignLabelWithHint:true,labelText:widget.kind==OfficeKind.excel?'Sheet data (CSV)':t('content'),
             hintText:widget.kind==OfficeKind.excel?'Product,Quantity,Price\nNotebook,4,5.99\nPen,12,1.50':'Write your content here…',
             helperText:widget.kind==OfficeKind.excel?'Put each row on a new line; separate columns with commas.':widget.kind==OfficeKind.powerpoint?'The subtitle appears below the title on the first slide.':'Your content will be packaged into a real .${widget.kind.extension} file.',
             prefixIcon:const Padding(padding:EdgeInsets.only(bottom:185),child:Icon(Icons.edit_note_rounded)))),
+        if(widget.state.showWordCount)Padding(padding:const EdgeInsets.fromLTRB(4,9,4,0),child:Row(children:[
+          Icon(Icons.text_fields_rounded,size:16,color:theme.colorScheme.onSurfaceVariant),const SizedBox(width:6),
+          Text('${bodyController.text.trim().isEmpty?0:bodyController.text.trim().split(RegExp(r'\s+')).length} words',style:theme.textTheme.labelSmall?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width:13),Text('${bodyController.text.length} characters',style:theme.textTheme.labelSmall?.copyWith(color:theme.colorScheme.onSurfaceVariant)),
+        ])),
         const SizedBox(height:18),
         Wrap(spacing:10,runSpacing:10,children:[
           FilledButton.icon(onPressed:saving?null:_save,icon:saving?const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)):const Icon(Icons.file_download_outlined),label:Text(saving?'Preparing…':t('save'))),

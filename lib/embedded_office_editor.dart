@@ -82,11 +82,11 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     final alignment = switch (value) {
       'center' => WmlJustification.center,
       'right' => WmlJustification.right,
-      'justify' => WmlJustification.both,
+      'justify' => WmlJustification.justify,
       _ => WmlJustification.left,
     };
     word.applyParagraphFormat((paragraph) {
-      paragraph.alignment = alignment;
+      paragraph.justification = alignment;
     });
   }
 

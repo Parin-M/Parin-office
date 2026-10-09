@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -72,19 +71,16 @@ class UserFontLibrary {
   }
 
   static Future<UserFontFamily?> importFromDevice() async {
-    final picked = await FilePicker.pickFiles(
+    final selected = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['ttf', 'otf'],
-      allowMultiple: false,
-      withData: true,
     );
-    if (picked.isEmpty) return null;
-    final selected = picked.files.single;
+    if (selected == null) return null;
     final extension = (selected.extension ?? '').toLowerCase();
     if (extension != 'ttf' && extension != 'otf') {
       throw const FormatException('Only TrueType (.ttf) and OpenType (.otf) fonts are supported.');
     }
-    final bytes = selected.bytes ?? await selected.readAsBytes();
+    final bytes = await selected.readAsBytes();
     if (bytes.length < 256) {
       throw const FormatException('The selected font file is empty or invalid.');
     }

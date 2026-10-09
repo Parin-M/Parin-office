@@ -245,57 +245,6 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     }
   }
 
-  void _action(String action) {
-    final controller = _controller;
-    if (controller == null) return;
-    switch (action) {
-      case 'find':
-        controller.requestFind();
-        break;
-      case 'replace':
-        controller.requestReplace();
-        break;
-      case 'spell':
-        controller.requestSpellCheck();
-        break;
-      case 'select':
-        controller.selectAll();
-        break;
-      case 'print':
-        controller.requestPrint();
-        break;
-      case 'undo':
-        controller.undo();
-        break;
-      case 'redo':
-        controller.redo();
-        break;
-      case 'freezeRow':
-        _sheet?.freezeTopRow();
-        break;
-      case 'freezeColumn':
-        _sheet?.freezeFirstColumn();
-        break;
-      case 'recalculate':
-        _sheet?.recalculateWorkbook();
-        break;
-      case 'present':
-        _slides?.startShow(from: _slides!.activeSlideIndex);
-        setState(() => _showing = true);
-        break;
-      case 'previous':
-        _slides?.showPrevious();
-        break;
-      case 'next':
-        _slides?.showNext();
-        break;
-      case 'stopShow':
-        _slides?.endShow();
-        setState(() => _showing = false);
-        break;
-    }
-  }
-
   Future<void> _chooseFontOrSize(String title, List<String> options, ValueChanged<String> onPicked) async {
     final result = await showModalBottomSheet<String>(
       context: context,
@@ -608,19 +557,6 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     'nextSlide' => 'Next slide',
     _ => action,
   };
-
-  Widget _menuButton(String label) => PopupMenuButton<String>(
-    tooltip: label,
-    onSelected: (action) => unawaited(_executeAction(action)),
-    itemBuilder: (_) => _menuOptions(label).map((action) => PopupMenuItem<String>(
-      value: action,
-      child: Text(_actionLabel(action)),
-    )).toList(),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 13)),
-    ),
-  );
 
   Widget _toolButton(String label, IconData icon, VoidCallback? onPressed, {bool selected = false}) =>
       Padding(

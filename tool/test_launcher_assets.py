@@ -86,7 +86,7 @@ def main() -> None:
             if a:
                 assert (r, g, b) == (255, 255, 255), "themed icon foreground must be pure white"
     # Confirm negative space exists around the glyph for launchers that tint it.
-    assert mono[0][3] == 0 and mono[512 * 4 + 3] == 255 and mono[512 * 4] == 255
+    assert mono[0][3] == 0 and mono[512][512 * 4 + 3] == 255 and mono[512][512 * 4] == 255
     print("Launcher icon validation passed: adaptive safe zone and monochrome tint layer are valid.")
 
 

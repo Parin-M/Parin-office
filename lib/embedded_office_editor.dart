@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:quds_office_editor/quds_office_editor.dart';
+import 'help_center.dart';
 
 /// On-device OOXML editor. All document bytes stay in this process; no
 /// network endpoint, conversion service, or account is needed to edit files.
@@ -29,8 +30,9 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
   bool _loading = true;
   bool _saving = false;
   bool _showing = false;
-  bool _sidebarOpen = true;
+  bool _sidebarOpen = false;
   bool _starred = false;
+  String _ribbonTab = 'Home';
   String? _error;
   String _progress = 'Opening document locally…';
 
@@ -122,7 +124,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       enableUndo: true,
       autofocus: false,
       interactiveRulers: true,
-      showNotesPane: true,
+      showNotesPane: _extension == 'pptx',
     );
 
     switch (_extension) {
@@ -478,19 +480,29 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
       case 'nextSlide':
         _slides?.showNext();
         break;
+      case 'toggleHiddenSlide':
+        if (_slides != null) _slides!.toggleSlideHidden(_slides!.activeSlideIndex);
+        break;
+      case 'configureTransition':
+        await _configureTransition();
+        break;
+      case 'configureAnimation':
+        await _configureAnimation();
+        break;
+      case 'previewTransition':
+        _slides?.previewTransition();
+        break;
+      case 'previewAnimations':
+        _slides?.previewAnimations();
+        break;
+      case 'stopShow':
+        _slides?.endShow();
+        setState(() => _showing = false);
+        break;
       case 'help':
-        await showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Parin Office · Offline engine'),
-            content: const Text(
-              'DOCX, XLSX and PPTX are opened and saved on this device. '
-              'No document is uploaded to a server. Complex vendor-specific extensions '
-              'and macros may not be fully compatible with desktop Microsoft Office.',
-            ),
-            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
-          ),
-        );
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => HelpCenterPage(initialFormat: _extension),
+        ));
         break;
     }
   }
@@ -501,12 +513,14 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     'View' => const ['toggleSidebar'],
     'Insert' when _isWord => const ['heading1', 'heading2', 'table', 'pageBreak', 'footnote', 'endnote', 'toc', 'hyperlink', 'comment'],
     'Insert' when _isSheet => const ['freezeRow', 'freezeColumn', 'recalculate'],
-    'Insert' when _isSlides => const ['startShow', 'previousSlide', 'nextSlide'],
+    'Insert' when _isSlides => const ['table', 'startShow', 'previousSlide', 'nextSlide', 'configureTransition', 'configureAnimation'],
     'Format' when _isWord => const ['bold', 'italic', 'underline', 'strike', 'font', 'fontSize', 'fontColor', 'highlight', 'alignLeft', 'alignCenter', 'alignRight', 'justify', 'bulletList', 'numberedList', 'pageA4', 'pageLetter', 'landscape', 'portrait'],
     'Format' when _isSheet => const ['freezeRow', 'freezeColumn', 'recalculate'],
     'Tools' when _isWord => const ['spell', 'toc', 'comment', 'pdf'],
     'Tools' when _isSheet => const ['recalculate', 'freezeRow', 'freezeColumn', 'pdf'],
-    'Tools' when _isSlides => const ['startShow', 'previousSlide', 'nextSlide', 'pdf'],
+    'Tools' when _isSlides => const ['startShow', 'previousSlide', 'nextSlide', 'configureTransition', 'configureAnimation', 'previewTransition', 'previewAnimations', 'toggleHiddenSlide', 'pdf'],
+    'Transitions' when _isSlides => const ['configureTransition', 'previewTransition'],
+    'Animations' when _isSlides => const ['configureAnimation', 'previewAnimations'],
     'Help' => const ['help'],
     _ => const [],
   };
@@ -555,6 +569,12 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
     'startShow' => 'Start slideshow',
     'previousSlide' => 'Previous slide',
     'nextSlide' => 'Next slide',
+    'configureTransition' => 'Slide transition settings…',
+    'configureAnimation' => 'Object animation settings…',
+    'previewTransition' => 'Preview transition',
+    'previewAnimations' => 'Preview animations',
+    'toggleHiddenSlide' => 'Hide / show current slide',
+    'stopShow' => 'Stop slideshow',
     _ => action,
   };
 
@@ -604,9 +624,305 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
         ),
       );
 
+
+  Future<void> _configureTransition({bool applyAllDefault = false}) async {
+    final controller = _slides;
+    if (controller == null) return;
+    final current = controller.slide.transition;
+    var kind = current.kind;
+    var direction = current.direction;
+    var duration = current.durationMs.toDouble().clamp(100.0, 2500.0);
+    var clickAdvance = current.advanceOnClick;
+    var autoAdvance = current.advanceAfterMs != null;
+    var advanceAfter = (current.advanceAfterMs ?? 5000).toDouble().clamp(1000.0, 20000.0);
+    var applyAll = applyAllDefault;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, refresh) => AlertDialog(
+          title: const Text('Slide transitions'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<PmlTransitionKind>(
+                  initialValue: kind,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Transition effect'),
+                  items: PmlTransitionKind.values.map((value) => DropdownMenuItem(
+                    value: value, child: Text(value.name),
+                  )).toList(),
+                  onChanged: (value) { if (value != null) refresh(() => kind = value); },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PmlTransitionDir>(
+                  initialValue: direction,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Direction'),
+                  items: PmlTransitionDir.values.map((value) => DropdownMenuItem(
+                    value: value, child: Text(value.name),
+                  )).toList(),
+                  onChanged: (value) { if (value != null) refresh(() => direction = value); },
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  const Expanded(child: Text('Duration')),
+                  Text(duration.round().toString() + ' ms'),
+                ]),
+                Slider(value: duration, min: 100, max: 2500, divisions: 24,
+                  onChanged: (value) => refresh(() => duration = value)),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Advance on click'),
+                  value: clickAdvance,
+                  onChanged: (value) => refresh(() => clickAdvance = value),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Advance automatically'),
+                  value: autoAdvance,
+                  onChanged: (value) => refresh(() => autoAdvance = value),
+                ),
+                if (autoAdvance) ...[
+                  Row(children: [
+                    const Expanded(child: Text('Wait before next slide')),
+                    Text((advanceAfter / 1000).toStringAsFixed(1) + ' s'),
+                  ]),
+                  Slider(value: advanceAfter, min: 1000, max: 20000, divisions: 19,
+                    onChanged: (value) => refresh(() => advanceAfter = value)),
+                ],
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Apply to all slides'),
+                  value: applyAll,
+                  onChanged: (value) => refresh(() => applyAll = value ?? false),
+                ),
+                const Text('Preview the effect before presenting. Keep motion subtle for dense or formal decks.'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            OutlinedButton(
+              onPressed: () {
+                controller.setSlideTransition(PmlSlideTransition(
+                  kind: kind,
+                  direction: direction,
+                  durationMs: duration.round(),
+                  advanceOnClick: clickAdvance,
+                  advanceAfterMs: autoAdvance ? advanceAfter.round() : null,
+                ), applyToAll: applyAll, preview: true);
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Apply and preview'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted == true && mounted) setState(() {});
+  }
+
+  Future<void> _configureAnimation() async {
+    final controller = _slides;
+    if (controller == null) return;
+    if (controller.selected == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a text box, picture, or shape before adding an animation.')),
+      );
+      return;
+    }
+    final existingIndex = controller.selectedAnimationIndex;
+    final existing = controller.selectedAnimation;
+    var preset = existing?.preset ?? PmlAnimPreset.fade;
+    var trigger = existing?.trigger ?? PmlAnimTrigger.onClick;
+    var direction = existing?.direction ?? PmlTransitionDir.left;
+    var duration = (existing?.durationMs ?? 500).toDouble().clamp(100.0, 4000.0);
+    var delay = (existing?.delayMs ?? 0).toDouble().clamp(0.0, 5000.0);
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, refresh) => AlertDialog(
+          title: Text(existing == null ? 'Add object animation' : 'Edit object animation'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<PmlAnimPreset>(
+                  initialValue: preset,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Effect'),
+                  items: PmlAnimPreset.values.map((value) => DropdownMenuItem(
+                    value: value, child: Text(value.name),
+                  )).toList(),
+                  onChanged: (value) { if (value != null) refresh(() => preset = value); },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PmlAnimTrigger>(
+                  initialValue: trigger,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Start')),
+                  items: PmlAnimTrigger.values.map((value) => DropdownMenuItem(
+                    value: value, child: Text(value.name),
+                  )).toList(),
+                  onChanged: (value) { if (value != null) refresh(() => trigger = value); },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<PmlTransitionDir>(
+                  initialValue: direction,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Direction'),
+                  items: PmlTransitionDir.values.map((value) => DropdownMenuItem(
+                    value: value, child: Text(value.name),
+                  )).toList(),
+                  onChanged: (value) { if (value != null) refresh(() => direction = value); },
+                ),
+                const SizedBox(height: 12),
+                Row(children: [const Expanded(child: Text('Duration')), Text(duration.round().toString() + ' ms')]),
+                Slider(value: duration, min: 100, max: 4000, divisions: 39,
+                  onChanged: (value) => refresh(() => duration = value)),
+                Row(children: [const Expanded(child: Text('Delay')), Text(delay.round().toString() + ' ms')]),
+                Slider(value: delay, min: 0, max: 5000, divisions: 50,
+                  onChanged: (value) => refresh(() => delay = value)),
+                const Text('On click waits for the presenter; With previous and After previous build a timed sequence.'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Apply animation')),
+          ],
+        ),
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    if (existingIndex != null) {
+      controller.updateShapeAnimation(existingIndex, trigger: trigger, direction: direction,
+        durationMs: duration.round(), delayMs: delay.round());
+    } else {
+      controller.addShapeAnimation(preset, trigger: trigger, direction: direction, durationMs: duration.round());
+      final addedIndex = controller.slide.animations.length - 1;
+      if (addedIndex >= 0) controller.updateShapeAnimation(addedIndex, delayMs: delay.round());
+    }
+    setState(() {});
+  }
+
+  Widget _ribbonTabs() {
+    final tabs = _isWord
+        ? const ['Home', 'Insert', 'Layout', 'Review', 'View']
+        : _isSheet
+            ? const ['Home', 'Insert', 'Formulas', 'Data', 'View']
+            : const ['Home', 'Insert', 'Design', 'Transitions', 'Animations', 'Slide show'];
+    final theme = Theme.of(context);
+    return Container(
+      height: 37,
+      color: theme.colorScheme.surface,
+      alignment: AlignmentDirectional.centerStart,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsetsDirectional.only(start: 12, end: 12),
+        child: Row(children: [
+          for (final tab in tabs)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 5),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(4),
+                onTap: () => setState(() => _ribbonTab = tab),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _ribbonTab == tab ? theme.colorScheme.primary.withAlpha(20) : Colors.transparent,
+                    border: Border(bottom: BorderSide(
+                      color: _ribbonTab == tab ? theme.colorScheme.primary : Colors.transparent,
+                      width: 2,
+                    )),
+                  ),
+                  child: Text(tab, style: TextStyle(
+                    color: _ribbonTab == tab ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: _ribbonTab == tab ? FontWeight.w800 : FontWeight.w500,
+                    fontSize: 12,
+                  )),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   List<Widget> _toolbarActions() {
     final controller = _controller;
     if (controller == null) return const [];
+    if (_isSlides && _ribbonTab == 'Transitions') return [
+      _toolButton('Choose transition effect and timing', Icons.transition_rounded, _configureTransition),
+      _toolButton('Preview current transition', Icons.preview_rounded, () { _slides?.previewTransition(); setState(() {}); }),
+      _toolButton('Apply transition to all slides', Icons.library_add_check_outlined, () => _configureTransition(applyAllDefault: true)),
+    ];
+    if (_isSlides && _ribbonTab == 'Animations') return [
+      _toolButton('Add or edit selected object animation', Icons.animation_rounded, _configureAnimation),
+      _toolButton('Preview object animations', Icons.play_circle_outline_rounded, () { _slides?.previewAnimations(); setState(() {}); }),
+      _toolButton('Remove selected animation', Icons.delete_outline_rounded, () {
+        final index = _slides?.selectedAnimationIndex;
+        if (index != null) { _slides?.removeShapeAnimation(index); setState(() {}); }
+      }),
+      _toolButton('Find an object', Icons.search_rounded, () => _executeAction('find')),
+    ];
+    if (_isSlides && _ribbonTab == 'Slide show') return [
+      _toolButton('Start slide show', Icons.slideshow_rounded, () => _executeAction('startShow')),
+      _toolButton('Previous animation or slide', Icons.skip_previous_rounded, () => _executeAction('previousSlide')),
+      _toolButton('Next animation or slide', Icons.skip_next_rounded, () => _executeAction('nextSlide')),
+      _toolButton('Hide/show current slide', Icons.visibility_off_outlined, () => _executeAction('toggleHiddenSlide')),
+      _toolButton('Stop slide show', Icons.stop_circle_outlined, () => _executeAction('stopShow')),
+    ];
+    if (_isSlides && _ribbonTab == 'Design') return [
+      _dropdownTool('Slide background', 'Choose color', const ['FFFFFF', '101426', 'EAF1FF', 'E7F7F1', 'FFF4E3', 'F8EAF4'],
+        (hex) { _slides?.applyMasterBackground(hex); setState(() {}); }, width: 140),
+      _toolButton('Preview transition', Icons.preview_rounded, () => _slides?.previewTransition()),
+      _toolButton('Transition settings', Icons.transition_rounded, _configureTransition),
+    ];
+    if (_isSlides && _ribbonTab == 'Insert') return [
+      _toolButton('Insert 3 × 3 table on slide', Icons.table_chart_outlined, () => _slides?.insertTable(rows: 3, cols: 3)),
+      _toolButton('Find in presentation', Icons.search_rounded, () => _executeAction('find')),
+      _toolButton('Add animation', Icons.animation_rounded, _configureAnimation),
+      _toolButton('Add speaker note', Icons.notes_rounded, () => _slides?.setSpeakerNotes('')),
+    ];
+    if (_isWord && _ribbonTab == 'Insert') return [
+      _toolButton('Insert table', Icons.table_chart_outlined, () => _executeAction('table')),
+      _toolButton('Insert page break', Icons.insert_page_break_outlined, () => _executeAction('pageBreak')),
+      _toolButton('Insert footnote', Icons.notes_rounded, () => _executeAction('footnote')),
+      _toolButton('Insert endnote', Icons.note_add_outlined, () => _executeAction('endnote')),
+      _toolButton('Table of contents', Icons.format_list_numbered_rounded, () => _executeAction('toc')),
+      _toolButton('Hyperlink', Icons.link_rounded, () => _executeAction('hyperlink')),
+      _toolButton('Review comment', Icons.comment_outlined, () => _executeAction('comment')),
+    ];
+    if (_isWord && _ribbonTab == 'Layout') return [
+      _toolButton('A4 page size', Icons.description_outlined, () => _executeAction('pageA4')),
+      _toolButton('US Letter page size', Icons.article_outlined, () => _executeAction('pageLetter')),
+      _toolButton('Landscape page', Icons.stay_current_landscape_outlined, () => _executeAction('landscape')),
+      _toolButton('Portrait page', Icons.stay_current_portrait_outlined, () => _executeAction('portrait')),
+      _toolButton('Table of contents', Icons.format_list_numbered_rounded, () => _executeAction('toc')),
+    ];
+    if (_isWord && _ribbonTab == 'Review') return [
+      _toolButton('Spell check', Icons.spellcheck_rounded, () => _executeAction('spell')),
+      _toolButton('Add comment', Icons.comment_outlined, () => _executeAction('comment')),
+      _toolButton('Find', Icons.search_rounded, () => _executeAction('find')),
+      _toolButton('Find and replace', Icons.find_replace_rounded, () => _executeAction('replace')),
+    ];
+    if (_isWord && _ribbonTab == 'View') return [
+      _toolButton('Show/hide document outline', Icons.view_sidebar_outlined, () => _executeAction('toggleSidebar')),
+      _toolButton('Select all', Icons.select_all_rounded, () => _executeAction('selectAll')),
+      _toolButton('Help for Word', Icons.help_outline_rounded, () => _executeAction('help')),
+    ];
+    if (_isSheet && _ribbonTab != 'Home') return [
+      _toolButton('Recalculate formulas', Icons.calculate_outlined, () => _executeAction('recalculate')),
+      _toolButton('Freeze top row', Icons.vertical_align_top_rounded, () => _executeAction('freezeRow')),
+      _toolButton('Freeze first column', Icons.vertical_align_center_rounded, () => _executeAction('freezeColumn')),
+      _toolButton('Find', Icons.search_rounded, () => _executeAction('find')),
+      _toolButton('Find and replace', Icons.find_replace_rounded, () => _executeAction('replace')),
+      _toolButton('Select all cells', Icons.select_all_rounded, () => _executeAction('selectAll')),
+      _toolButton('Export to PDF', Icons.picture_as_pdf_outlined, () => _executeAction('pdf')),
+      _toolButton('Help for Excel', Icons.help_outline_rounded, () => _executeAction('help')),
+    ];
     final result = <Widget>[
       _toolButton('Undo', Icons.undo_rounded, controller.canUndo ? () => _executeAction('undo') : null),
       _toolButton('Redo', Icons.redo_rounded, controller.canRedo ? () => _executeAction('redo') : null),
@@ -732,7 +1048,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
   }
 
   Widget _menuBar() {
-    final menus = <String>['File', 'Edit', 'View', if (_isWord) 'Insert', 'Format', 'Tools', 'Help'];
+    final menus = <String>['File', 'Edit', 'View', 'Insert', 'Format', 'Tools', 'Help'];
     return Container(
       height: 34,
       color: Theme.of(context).colorScheme.surface,
@@ -885,6 +1201,7 @@ class _EmbeddedOfficeEditorPageState extends State<EmbeddedOfficeEditorPage> {
           _header(),
           Divider(height: 1, color: theme.colorScheme.outlineVariant),
           _menuBar(),
+          _ribbonTabs(),
           _toolbar(),
           Expanded(
             child: _error != null

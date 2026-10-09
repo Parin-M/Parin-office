@@ -6,6 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
+import 'word_editor.dart';
+import 'spreadsheet_editor.dart';
+import 'presentation_editor.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/date_symbol_data_local.dart' as intl_data;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -444,7 +448,7 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
     if(!ready)return const MaterialApp(home:Scaffold(body:Center(child:CircularProgressIndicator())));
     return AnimatedBuilder(animation:state,builder:(context,_)=>MaterialApp(
       title:'Parin Office',debugShowCheckedModeBanner:false,locale:state.locale,supportedLocales:L10n.locales,
-      localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate],
+      localizationsDelegates:const [GlobalMaterialLocalizations.delegate,GlobalWidgetsLocalizations.delegate,GlobalCupertinoLocalizations.delegate,FlutterQuillLocalizations.delegate],
       localeResolutionCallback:(device,supported){for(final l in supported){if(l.toLanguageTag()==state.locale.toLanguageTag())return l;}for(final l in supported){if(l.languageCode==state.locale.languageCode)return l;}return const Locale('en');},
       theme:ThemeCatalog.build(state.preset,Brightness.light,false,highContrast:state.highContrast,compact:state.compactRibbon),
       darkTheme:ThemeCatalog.build(state.preset,Brightness.dark,state.amoled,highContrast:state.highContrast,compact:state.compactRibbon),
@@ -505,13 +509,13 @@ class Dashboard extends StatelessWidget {
   final VoidCallback openSettings;
 
   Future<void> openFile(BuildContext context) async {
-    final files=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:const ['pdf','docx','pptx','xlsx']);
+    final files=await FilePicker.pickFiles(type:FileType.custom,allowedExtensions:const ['pdf','docx','pptx','xlsx','xls']);
     if(!context.mounted||files.isEmpty)return;
     final file=files.first;
     final bytes=await file.readAsBytes();
     if(!context.mounted)return;
     final ext=(file.extension??'').toLowerCase();
-    final kind=switch(ext){'docx'=>OfficeKind.word,'pptx'=>OfficeKind.powerpoint,'xlsx'=>OfficeKind.excel,_=>OfficeKind.pdf};
+    final kind=switch(ext){'docx'=>OfficeKind.word,'pptx'=>OfficeKind.powerpoint,'xlsx'||'xls'=>OfficeKind.excel,_=>OfficeKind.pdf};
     await state.addRecent(file.name,kind);
     if(!context.mounted)return;
     if(kind==OfficeKind.pdf) {
@@ -682,15 +686,18 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
       final bytes=await OfficeDocumentFactory.create(kind:widget.kind,title:title,body:bodyController.text,subtitle:subtitleController.text);
       if(!mounted)return;
       final name=title.replaceAll(RegExp(r'[\\/:*?"<>|]'),'').trim();
-      final path=await FilePicker.saveFile(fileName:'${name.isEmpty?'Parin-Office':name}.${widget.kind.extension}',bytes:bytes,mimeType:widget.kind.mimeType,dialogTitle:'Save ${widget.kind.label}');
+      final baseName=name.isEmpty?'Parin-Office':name;
+      final outputName='$baseName.${widget.kind.extension}';
+      final path=await FilePicker.saveFile(fileName:outputName,bytes:bytes,mimeType:widget.kind.mimeType,dialogTitle:'Save ${widget.kind.label}');
       if(!mounted)return;
       if(path!=null){
-        await widget.state.addRecent('${name.isEmpty?'Parin-Office':name}.${widget.kind.extension}',widget.kind);
+        await widget.state.addRecent(outputName,widget.kind);
         await widget.state.clearDraft(widget.kind);
         if(widget.state.haptics)await HapticFeedback.mediumImpact();
         if(!mounted)return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(t('saved'))));
-        Navigator.of(context).pop();
+        Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+          builder:(_)=>widget.kind==OfficeKind.pdf?PdfPage(bytes:bytes,name:outputName):officeEditorPage(bytes,outputName)));
       }
     } catch(e) {
       if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Could not create file: $e')));
@@ -745,26 +752,21 @@ class PdfPage extends StatelessWidget {
   @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:PdfEditorView(bytes:bytes,documentId:name,onSave:save,showSaveButton:true));
 }
 
+Widget officeEditorPage(Uint8List bytes,String name) {
+  final ext=name.split('.').last.toLowerCase();
+  return switch(ext) {
+    'xlsx'||'xls'=>SpreadsheetEditorPage(bytes:bytes,fileName:name),
+    'pptx'||'ppt'=>PresentationEditorPage(bytes:bytes,fileName:name),
+    _=>WordEditorPage(bytes:bytes,fileName:name),
+  };
+}
+
 class OfficePage extends StatelessWidget {
   const OfficePage({super.key,required this.bytes,required this.name,required this.state});
   final Uint8List bytes;
   final String name;
   final AppState state;
-  @override Widget build(BuildContext context){
-    final extension=name.split('.').last.toLowerCase();
-    final kind=switch(extension){'pptx'=>OfficeKind.powerpoint,'xlsx'=>OfficeKind.excel,_=>OfficeKind.word};
-    final theme=Theme.of(context);
-    return Scaffold(appBar:AppBar(title:Text(name)),body:Center(
-      child:ConstrainedBox(constraints:const BoxConstraints(maxWidth:620),child:Padding(padding:const EdgeInsets.all(24),child:Column(
-        mainAxisAlignment:MainAxisAlignment.center,children:[
-          Container(width:78,height:78,decoration:BoxDecoration(color:kind.color.withAlpha(25),borderRadius:BorderRadius.circular(24)),child:Icon(kind.icon,color:kind.color,size:40)),
-          const SizedBox(height:20),Text(name,textAlign:TextAlign.center,style:theme.textTheme.headlineSmall?.copyWith(fontWeight:FontWeight.w900)),
-          const SizedBox(height:10),Text('This build can create starter '+kind.label+' files. Full-fidelity import and editing of existing Office documents is still in development.',
-            textAlign:TextAlign.center,style:theme.textTheme.bodyLarge?.copyWith(color:theme.colorScheme.onSurfaceVariant,height:1.45)),
-          const SizedBox(height:22),FilledButton.icon(onPressed:()=>Navigator.of(context).push(MaterialPageRoute<void>(
-            builder:(_)=>NewDocumentPage(kind:kind,state:state))),icon:const Icon(Icons.note_add_outlined),label:Text('Create new '+kind.label))
-        ])))));
-  }
+  @override Widget build(BuildContext context)=>officeEditorPage(bytes,name);
 }
 
 class OfficeWorkbench extends StatefulWidget{const OfficeWorkbench({super.key,required this.fileName});final String fileName;@override State<OfficeWorkbench>createState()=>_OfficeWorkbenchState();}

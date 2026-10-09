@@ -767,25 +767,44 @@ class _NewDocumentPageState extends State<NewDocumentPage> {
   }
 }
 
-class PdfPage extends StatelessWidget {
+class PdfPage extends StatefulWidget {
   const PdfPage({super.key, required this.bytes, required this.name});
   final Uint8List bytes;
   final String name;
 
+  @override
+  State<PdfPage> createState() => _PdfPageState();
+}
+
+class _PdfPageState extends State<PdfPage> {
+  late Uint8List _latestBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _latestBytes = widget.bytes;
+  }
+
   Future<void> save(Uint8List output) async {
-    await FilePicker.saveFile(
-      fileName: name,
+    _latestBytes = output;
+    final path = await FilePicker.saveFile(
+      fileName: widget.name,
       bytes: output,
       mimeType: 'application/pdf',
       dialogTitle: 'Save edited PDF',
     );
+    if (mounted && path != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF saved. Print and Tools now use this saved version.')),
+      );
+    }
   }
 
   Future<void> _print(BuildContext context) async {
     try {
       final completed = await Printing.layoutPdf(
-        name: name,
-        onLayout: (_) async => bytes,
+        name: widget.name,
+        onLayout: (_) async => _latestBytes,
       );
       if (!context.mounted) return;
       if (!completed) {
@@ -805,7 +824,7 @@ class PdfPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: Text(name, overflow: TextOverflow.ellipsis),
+      title: Text(widget.name, overflow: TextOverflow.ellipsis),
       actions: [
         IconButton(
           tooltip: 'Print PDF',
@@ -816,20 +835,20 @@ class PdfPage extends StatelessWidget {
           tooltip: 'PDF tools',
           icon: const Icon(Icons.build_outlined),
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => PdfToolsPage(bytes: bytes, fileName: name)),
+            MaterialPageRoute<void>(builder: (_) => PdfToolsPage(bytes: _latestBytes, fileName: widget.name)),
           ),
         ),
         IconButton(
           tooltip: 'PDF password and security tools',
           icon: const Icon(Icons.lock_outline_rounded),
           onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => PdfSecurityToolsPage(bytes: bytes, fileName: name)),
+            MaterialPageRoute<void>(builder: (_) => PdfSecurityToolsPage(bytes: _latestBytes, fileName: widget.name)),
           ),
         ),
         const SizedBox(width: 5),
       ],
     ),
-    body: PdfEditorView(bytes: bytes, documentId: name, onSave: save, showSaveButton: true),
+    body: PdfEditorView(bytes: widget.bytes, documentId: widget.name, onSave: save, showSaveButton: true),
   );
 }
 

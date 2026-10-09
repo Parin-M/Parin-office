@@ -445,7 +445,7 @@ class _ParinOfficeAppState extends State<ParinOfficeApp>{
       builder:(context,child)=>Directionality(textDirection:L10n.rtl(state.locale)?TextDirection.rtl:TextDirection.ltr,
         child:MediaQuery(data:MediaQuery.of(context).copyWith(textScaler:TextScaler.linear(state.textScale)),
           child:Stack(fit:StackFit.expand,children:[child??const SizedBox.shrink(),
-            if(state.blueLightFilter)IgnorePointer(child:ColoredBox(color:Color.fromRGBO(255,153,64,0.23*state.blueStrength)))]))),
+            if(state.blueLightFilter)IgnorePointer(child:ColoredBox(color:Color.fromRGBO(255,153,64,0.32*state.blueStrength)))]))),
       home:Shell(state:state)));
   }
 }
@@ -576,7 +576,7 @@ class Dashboard extends StatelessWidget {
                   OutlinedButton.icon(onPressed:()=>openFile(context),icon:const Icon(Icons.file_open_rounded),label:Text(t('open')))
                 ])
               ])),
-            const SizedBox(height:24),
+            if(state.showWelcomePanel) const SizedBox(height:24),
             if(state.showQuickActions) Row(children:[
               Expanded(child:Text(t('quick'),style:theme.textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900))),
               Text('PDF · DOCX · PPTX · XLSX',style:theme.textTheme.labelSmall?.copyWith(letterSpacing:0.5,fontWeight:FontWeight.w900,color:theme.colorScheme.onSurfaceVariant))
@@ -822,7 +822,29 @@ class RecentPage extends StatelessWidget {
           leading:CircleAvatar(backgroundColor:d.kind.color.withAlpha(24),child:Icon(d.kind.icon,color:d.kind.color)),
           title:Text(d.name,maxLines:1,overflow:TextOverflow.ellipsis,style:const TextStyle(fontWeight:FontWeight.w800)),
           subtitle:Text('${d.kind.label} • ${intl.DateFormat.yMMMd(state.locale.toString()).format(d.updatedAt)}'),
-          trailing:IconButton(tooltip:'Remove from recent',icon:const Icon(Icons.close_rounded),onPressed:()=>state.removeRecent(d.name))));
+          trailing:IconButton(
+            tooltip:'Remove from recent',
+            icon:const Icon(Icons.close_rounded),
+            onPressed:() async {
+              if(state.confirmRecentRemoval){
+                final yes=await showDialog<bool>(
+                  context:context,
+                  builder:(ctx)=>AlertDialog(
+                    title:Text(t('confirmRecentRemoval')),
+                    content:Text(state.locale.languageCode=='fa'
+                      ?'این مورد فقط از فهرست اخیر حذف می‌شود؛ فایل ذخیره‌شده حذف نخواهد شد.'
+                      :'Remove this item from the recent list only? The saved file will not be deleted.'),
+                    actions:[
+                      TextButton(onPressed:()=>Navigator.pop(ctx,false),child:Text(t('cancel'))),
+                      FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:Text(t('reset'))),
+                    ],
+                  ),
+                );
+                if(yes!=true)return;
+              }
+              await state.removeRecent(d.name);
+            },
+          )));
       }));
   }
 }

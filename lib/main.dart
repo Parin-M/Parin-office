@@ -1011,6 +1011,482 @@ class Dashboard extends StatelessWidget {
   }
 }
 
+class OfficeDocumentEditor extends StatefulWidget {
+  const OfficeDocumentEditor({super.key, required this.kind, required this.title, required this.state, required this.initialContent, this.importedFile = false});
+  final DocumentKind kind;
+  final String title;
+  final AppState state;
+  final String initialContent;
+  final bool importedFile;
+  @override
+  State<OfficeDocumentEditor> createState() => _OfficeDocumentEditorState();
+}
+
+class _OfficeDocumentEditorState extends State<OfficeDocumentEditor> {
+  late final TextEditingController titleController;
+  late final TextEditingController contentController;
+  bool exporting = false;
+  String t(String key) => L10n.text(widget.state.locale, key);
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController(text: widget.title.replaceFirst(RegExp(r'\.(docx|pptx|xlsx){const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
+class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}
+
+class PdfPage extends StatelessWidget {
+  const PdfPage({super.key, required this.bytes, required this.name, required this.state});
+  final Uint8List bytes;
+  final String name;
+  final AppState state;
+
+  Future<void> save(Uint8List output) async {
+    final filename = name.toLowerCase().endsWith('.pdf') ? name : name + '.pdf';
+    final saved = await FilePicker.saveFile(
+      fileName: filename,
+      bytes: output,
+      mimeType: 'application/pdf',
+      dialogTitle: 'Save edited PDF',
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+    );
+    if (saved != null) await state.markRecent(filename);
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+    body: PdfEditorView(bytes: bytes, documentId: name, onSave: save, showSaveButton: true),
+  );
+}
+
+class OfficePage extends StatelessWidget{
+ const OfficePage({super.key,required this.bytes,required this.name});final Uint8List bytes;final String name;
+ @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(name)),body:OfficeWorkbench(fileName:name));
+}
+
+class OfficeWorkbench extends StatefulWidget{const OfficeWorkbench({super.key,required this.fileName});final String fileName;@override State<OfficeWorkbench>createState()=>_OfficeWorkbenchState();}
+class _OfficeWorkbenchState extends State<OfficeWorkbench>{
+ int tab=0;bool bold=false,italic=false,underline=false;double zoom=1;
+ final names=['Home','Insert','Review','View'];
+ @override Widget build(BuildContext c)=>Column(children:[
+  SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:List.generate(names.length,(i)=>Padding(padding:const EdgeInsets.symmetric(horizontal:5),child:ChoiceChip(label:Text(names[i]),selected:tab==i,onSelected:(_)=>setState(()=>tab=i)))))),
+  const Divider(height:1),Expanded(child:switch(tab){0=>_wordCanvas(c),1=>_insert(c),2=>_review(c),_=>_view(c)})
+ ]);
+ Widget _wordCanvas(BuildContext c)=>Column(children:[
+  Padding(padding:const EdgeInsets.all(10),child:SingleChildScrollView(scrollDirection:Axis.horizontal,child:Row(children:[
+   ToggleButtons(isSelected:[bold,italic,underline],onPressed:(i){if(i==0)bold=!bold;if(i==1)italic=!italic;if(i==2)underline=!underline;setState((){});},children:const[Icon(Icons.format_bold),Icon(Icons.format_italic),Icon(Icons.format_underline)]),
+   const IconButton(onPressed:null,icon:Icon(Icons.format_align_left)),const IconButton(onPressed:null,icon:Icon(Icons.format_align_center)),const IconButton(onPressed:null,icon:Icon(Icons.format_align_right)),
+   const IconButton(onPressed:null,icon:Icon(Icons.table_chart_outlined)),const IconButton(onPressed:null,icon:Icon(Icons.image_outlined)),const IconButton(onPressed:null,icon:Icon(Icons.link)),const IconButton(onPressed:null,icon:Icon(Icons.comment_outlined)),const IconButton(onPressed:null,icon:Icon(Icons.track_changes_rounded)),
+  ]))),
+  Expanded(child:Container(color:Theme.of(c).colorScheme.surfaceContainerLowest,child:InteractiveViewer(minScale:.5,maxScale:2.5,child:Center(child:Transform.scale(scale:zoom,child:Container(width:620,height:820,color:Colors.white,padding:const EdgeInsets.all(58),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+   Text('PROJECT PROPOSAL',style:TextStyle(color:Colors.black,fontSize:28,fontWeight:FontWeight.w900,fontStyle:italic?FontStyle.italic:FontStyle.normal,decoration:underline?TextDecoration.underline:null)),
+   const SizedBox(height:18),Container(width:110,height:5,color:Theme.of(c).colorScheme.primary),const SizedBox(height:24),
+   Text('Executive Summary',style:TextStyle(color:Colors.black,fontSize:20,fontWeight:bold?FontWeight.w900:FontWeight.w700)),
+   const SizedBox(height:12),Text('This is the new Parin Office workspace. The document remains central while tools stay within one gesture.',style:TextStyle(color:Colors.black87,fontSize:14,height:1.65)),
+   const SizedBox(height:20),Text('Tables • media • styles • comments • revisions • layout • export',style:const TextStyle(color:Colors.black87,fontSize:14)),
+  ])))))))
+ ]);
+ Widget _insert(BuildContext c)=>GridView.count(crossAxisCount:MediaQuery.sizeOf(c).width>900?5:3,padding:const EdgeInsets.all(18),crossAxisSpacing:12,mainAxisSpacing:12,children:const[
+  _Feature(Icons.table_chart_outlined,'Table'),_Feature(Icons.image_outlined,'Image'),_Feature(Icons.bar_chart_rounded,'Chart'),_Feature(Icons.text_fields,'Text box'),_Feature(Icons.functions,'Equation'),
+  _Feature(Icons.link,'Hyperlink'),_Feature(Icons.qr_code_2,'QR code'),_Feature(Icons.emoji_emotions_outlined,'Symbols'),_Feature(Icons.note_add_outlined,'Footnote'),_Feature(Icons.auto_awesome,'Smart tools')
+ ]);
+ Widget _review(BuildContext c)=>ListView(padding:const EdgeInsets.all(18),children:const[
+  ListTile(leading:Icon(Icons.comment_outlined),title:Text('Comments'),subtitle:Text('Threads, mentions and resolution')),
+  ListTile(leading:Icon(Icons.track_changes_rounded),title:Text('Track changes'),subtitle:Text('Accept, reject and filter revisions')),
+  ListTile(leading:Icon(Icons.compare_arrows_rounded),title:Text('Compare'),subtitle:Text('Compare document revisions')),
+  ListTile(leading:Icon(Icons.lock_outline),title:Text('Protect'),subtitle:Text('Permissions and editing restrictions'))
+ ]);
+ Widget _view(BuildContext c)=>Column(children:[
+  Padding(padding:const EdgeInsets.all(18),child:Row(children:[const Text('Zoom'),Expanded(child:Slider(value:zoom,min:.5,max:2.5,onChanged:(v)=>setState(()=>zoom=v))),Text((zoom*100).round().toString()+'%')])),
+  const Expanded(child:Center(child:Text('Rulers • Grid • Navigation pane • Focus mode • Print layout')))
+ ]);
+}
+
+class _Feature extends StatelessWidget{const _Feature(this.icon,this.title);final IconData icon;final String title;@override Widget build(BuildContext c)=>Card(child:InkWell(onTap:(){},child:Center(child:Column(mainAxisSize:MainAxisSize.min,children:[Icon(icon,size:30),const SizedBox(height:9),Text(title,style:const TextStyle(fontWeight:FontWeight.w800))]))));}
+
+class RecentPage extends StatelessWidget{
+ const RecentPage({super.key});
+ @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Recent documents')),body:ListView(padding:const EdgeInsets.all(22),children:const[
+  _Recent('Project proposal.docx','Word • edited recently',Icons.article_outlined),
+  _Recent('Strategy deck.pptx','PowerPoint • yesterday',Icons.slideshow_outlined),
+  _Recent('Financial model.xlsx','Excel • 2 days ago',Icons.grid_on_outlined),
+  _Recent('Research paper.pdf','PDF • 3 days ago',Icons.picture_as_pdf_outlined),
+ ]));
+}
+class _Recent extends StatelessWidget{const _Recent(this.title,this.subtitle,this.icon);final String title,subtitle;final IconData icon;@override Widget build(BuildContext c)=>Card(margin:const EdgeInsets.only(bottom:12),child:ListTile(leading:CircleAvatar(child:Icon(icon)),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text(subtitle),trailing:const Icon(Icons.more_horiz_rounded)));}
+
+class WorkspaceHome extends StatelessWidget{
+ const WorkspaceHome({super.key});
+ @override Widget build(BuildContext c)=>Scaffold(appBar:AppBar(title:const Text('Workspace')),body:GridView.count(crossAxisCount:MediaQuery.sizeOf(c).width>1000?4:2,padding:const EdgeInsets.all(22),crossAxisSpacing:14,mainAxisSpacing:14,children:const[
+  _Feature(Icons.description_outlined,'Documents'),_Feature(Icons.picture_as_pdf_outlined,'PDF Studio'),_Feature(Icons.table_chart_outlined,'Spreadsheet'),_Feature(Icons.slideshow_outlined,'Presentation'),_Feature(Icons.cloud_outlined,'Cloud space'),_Feature(Icons.favorite_border,'Favorites'),_Feature(Icons.folder_open,'Templates'),_Feature(Icons.auto_awesome_outlined,'AI tools'),
+ ]));
+}
+
+class SettingsPage extends StatelessWidget{
+ const SettingsPage({super.key,required this.state});final AppState state;
+ Widget section(String title,IconData icon,List<Widget> children)=>Card(child:ExpansionTile(initiallyExpanded:true,leading:Icon(icon),title:Text(title,style:const TextStyle(fontWeight:FontWeight.w900)),children:children));
+ @override Widget build(BuildContext c){
+  final t=(String k)=>L10n.text(state.locale,k);
+  return Scaffold(appBar:AppBar(title:Text(t('settings'))),body:ListView(padding:const EdgeInsets.fromLTRB(18,12,18,40),children:[
+   section(t('appearance'),Icons.palette_outlined,[
+    ListTile(title:Text(t('themes')),subtitle:const Text('128 color presets')),
+    SizedBox(height:320,child:GridView.builder(itemCount:128,gridDelegate:const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent:78,crossAxisSpacing:8,mainAxisSpacing:8),itemBuilder:(ctx,i){final p=ThemeCatalog.presets[i];final selected=i==state.themeIndex;return InkWell(onTap:()=>state.setTheme(i),borderRadius:BorderRadius.circular(16),child:Container(decoration:BoxDecoration(borderRadius:BorderRadius.circular(16),gradient:LinearGradient(colors:[p.primary,p.secondary]),border:selected?Border.all(color:Theme.of(ctx).colorScheme.onSurface,width:3):null),child:Center(child:Text((i+1).toString(),style:const TextStyle(color:Colors.white,fontWeight:FontWeight.w900)))));})),
+    ListTile(title:const Text('Display mode'),trailing:DropdownButton<AppearanceMode>(value:state.mode,items:const[
+     DropdownMenuItem(value:AppearanceMode.system,child:Text('System')),DropdownMenuItem(value:AppearanceMode.light,child:Text('Light')),DropdownMenuItem(value:AppearanceMode.dark,child:Text('Dark')),DropdownMenuItem(value:AppearanceMode.amoled,child:Text('AMOLED'))
+    ],onChanged:(v){if(v!=null)state.setMode(v);}))
+   ]),
+   section(t('language'),Icons.language_outlined,List.generate(L10n.locales.length,(i){final l=L10n.locales[i];return ListTile(leading:CircleAvatar(radius:15,child:Text(l.languageCode.toUpperCase())),title:Text(L10n.names[i]),trailing:l.toLanguageTag()==state.locale.toLanguageTag()?const Icon(Icons.check_circle):null,onTap:()=>state.setLocale(l));})),
+   section(t('general'),Icons.tune_rounded,[
+    SwitchListTile(value:state.autosave,onChanged:(v)=>state.setFlag('autosave',v),title:const Text('Smart autosave')),
+    SwitchListTile(value:state.animations,onChanged:(v)=>state.setFlag('animations',v),title:const Text('Motion and transitions')),
+    SwitchListTile(value:state.haptics,onChanged:(v)=>state.setFlag('haptics',v),title:const Text('Haptic feedback')),
+    SwitchListTile(value:state.compactRibbon,onChanged:(v)=>state.setFlag('compact',v),title:const Text('Compact ribbon')),
+    const ListTile(title:Text('Safe save policy'),subtitle:Text('Protect originals and use Save As when required'))
+   ]),
+   section(t('editor'),Icons.edit_note_rounded,[
+    const ListTile(title:Text('Command palette'),subtitle:Text('Search every action and shortcut')),
+    const ListTile(title:Text('Undo / redo'),subtitle:Text('250+ action history')),
+    const ListTile(title:Text('Rulers & snapping'),subtitle:Text('Guides, grid and precise placement')),
+    const ListTile(title:Text('Stylus'),subtitle:Text('Pressure, palm rejection and quick tools')),
+    const ListTile(title:Text('Typography'),subtitle:Text('Fonts, spacing, ligatures and RTL shaping')),
+   ]),
+   section(t('security'),Icons.security_outlined,[
+    SwitchListTile(value:state.diagnostics,onChanged:(v)=>state.setFlag('diagnostics',v),title:const Text('Anonymous diagnostics')),
+    const ListTile(title:Text('App lock'),subtitle:Text('PIN, biometrics and timeout')),
+    const ListTile(title:Text('Protected documents'),subtitle:Text('Passwords, permissions and safe handling')),
+   ]),
+   section(t('performance'),Icons.speed_rounded,[
+    const ListTile(title:Text('Large-document mode'),subtitle:Text('Virtualized pages, slides and spreadsheet rows')),
+    const ListTile(title:Text('Rendering'),subtitle:Text('Progressive tiles, caching and GPU-first painting')),
+    const ListTile(title:Text('Memory'),subtitle:Text('Automatic cache trimming and recovery checkpoints')),
+   ]),
+   section(t('accessibility'),Icons.accessibility_new_rounded,[
+    const ListTile(title:Text('Text scaling'),subtitle:Text('80%–200%')),
+    const ListTile(title:Text('High contrast'),subtitle:Text('Focus rings and stronger boundaries')),
+    const ListTile(title:Text('Reduced motion'),subtitle:Text('Disable non-essential animations')),
+    const ListTile(title:Text('Screen reader'),subtitle:Text('Semantics and keyboard navigation')),
+   ]),
+   section('Power user',Icons.developer_mode_rounded,[
+    const ListTile(title:Text('Compatibility'),subtitle:Text('Strict / balanced / maximum preservation')),
+    const ListTile(title:Text('Recovery center'),subtitle:Text('Restore interrupted document sessions')),
+    const ListTile(title:Text('Experimental engines'),subtitle:Text('Preview advanced Word / Excel / PowerPoint engines')),
+   ]),
+  ]));
+ }
+}
+, caseSensitive: false), ''));
+    contentController = TextEditingController(text: widget.initialContent);
+    _restoreDraft();
+  }
+
+  Future<void> _restoreDraft() async {
+    if (widget.importedFile || !widget.state.flag('restoreDrafts')) return;
+    final draft = await widget.state.loadDraft(titleController.text);
+    if (!mounted || draft == null || contentController.text != widget.initialContent) return;
+    setState(() => contentController.text = draft);
+  }
+
+  Future<void> _saveDraft() async {
+    if (widget.state.flag('autosave') && widget.state.flag('autoRecovery')) {
+      await widget.state.saveDraft(titleController.text, contentController.text);
+    }
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    contentController.dispose();
+    super.dispose();
+  }
+
+  Future<bool> _confirmExport() async {
+    if (!widget.state.flag('confirmExport')) return true;
+    final answer = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export document?'),
+        content: Text(t('saveHint')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t('cancel'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(t('done'))),
+        ],
+      ),
+    );
+    return answer == true;
+  }
+
+  Future<void> _export() async {
+    if (exporting || !await _confirmExport() || !mounted) return;
+    setState(() => exporting = true);
+    try {
+      var baseName = titleController.text.trim();
+      if (baseName.isEmpty) baseName = 'Untitled';
+      baseName = baseName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '-');
+      final fileName = baseName + '.' + widget.kind.extension;
+      final bytes = await DocumentFactory.create(widget.kind, baseName, contentController.text, slideTitle: baseName);
+      if (!mounted) return;
+      final saved = await FilePicker.saveFile(
+        fileName: fileName,
+        bytes: bytes,
+        mimeType: widget.kind.mimeType,
+        dialogTitle: 'Save ' + widget.kind.label,
+        type: FileType.custom,
+        allowedExtensions: [widget.kind.extension],
+      );
+      if (saved != null) {
+        await widget.state.markRecent(fileName);
+        await widget.state.saveDraft(baseName, contentController.text);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('exported') + ': ' + fileName)));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: ' + error.toString())));
+    } finally {
+      if (mounted) setState(() => exporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = widget.state;
+    final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final isExcel = widget.kind == DocumentKind.excel;
+    final accent = switch (widget.kind) {
+      DocumentKind.pdf => const Color(0xFFE84E68),
+      DocumentKind.word => const Color(0xFF3478E5),
+      DocumentKind.powerpoint => const Color(0xFFEB8734),
+      DocumentKind.excel => const Color(0xFF1A9E75),
+    };
+    final name = titleController.text.trim().isEmpty ? 'Untitled' : titleController.text.trim();
+
+    final editor = Column(
+      children: [
+        if (widget.importedFile)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: theme.colorScheme.tertiaryContainer, borderRadius: BorderRadius.circular(15)),
+            child: Text(t('existingFileNote'), style: theme.textTheme.bodySmall),
+          ),
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.all(state.compactRibbon ? 11 : 16),
+            decoration: BoxDecoration(color: theme.colorScheme.surface, border: Border.all(color: theme.colorScheme.outlineVariant), borderRadius: BorderRadius.circular(22)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: titleController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(labelText: t('documentTitle'), prefixIcon: const Icon(Icons.title_rounded)),
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                if (state.flag('showRulers')) ...[
+                  const SizedBox(height: 10),
+                  _EditorRuler(color: accent),
+                ],
+                const SizedBox(height: 12),
+                Row(children: [
+                  Icon(_iconForKind(widget.kind), color: accent),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(widget.kind.label, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
+                  if (state.flag('autosave') && state.flag('autoRecovery'))
+                    Tooltip(message: t('draftSaved'), child: Icon(Icons.cloud_done_outlined, color: theme.colorScheme.tertiary, size: 19)),
+                ]),
+                const SizedBox(height: 11),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isExcel ? theme.colorScheme.surfaceContainerLow : theme.colorScheme.surface,
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Stack(children: [
+                      if (isExcel && state.flag('showGridlines'))
+                        Positioned.fill(child: CustomPaint(painter: _EditorGridPainter(theme.colorScheme.outlineVariant.withValues(alpha: 0.35)))),
+                      TextField(
+                        controller: contentController,
+                        expands: true,
+                        maxLines: null,
+                        minLines: null,
+                        keyboardType: TextInputType.multiline,
+                        textAlignVertical: TextAlignVertical.top,
+                        smartDashesType: state.flag('smartPunctuation') ? SmartDashesType.enabled : SmartDashesType.disabled,
+                        smartQuotesType: state.flag('smartPunctuation') ? SmartQuotesType.enabled : SmartQuotesType.disabled,
+                        style: TextStyle(fontSize: state.editorFontSize, height: 1.58, fontFamily: isExcel ? 'monospace' : null),
+                        decoration: InputDecoration(
+                          hintText: isExcel ? t('spreadsheetHint') : 'Start typing here…',
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.all(18),
+                          fillColor: Colors.transparent,
+                          filled: true,
+                        ),
+                        onChanged: (_) {
+                          setState(() {});
+                          _saveDraft();
+                        },
+                      ),
+                    ]),
+                  ),
+                ),
+                if (isExcel && state.flag('showGridlines')) ...[
+                  const SizedBox(height: 9),
+                  Text(t('showGridlines') + ' • ' + contentController.text.split('\n').length.toString() + ' rows', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                ],
+                if (!isExcel && state.flag('spellAssist')) ...[
+                  const SizedBox(height: 9),
+                  Row(children: [
+                    Icon(Icons.lightbulb_outline_rounded, size: 17, color: theme.colorScheme.tertiary),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text('Writing hints are enabled. Drafts stay on this device.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+                  ]),
+                ],
+                if (state.flag('showStatusBar')) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Icon(Icons.offline_bolt_outlined, size: 15, color: theme.colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(t('onDevice'), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant))),
+                    Text(contentController.text.length.toString() + ' chars', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  ]),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(color: accent.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(12)),
+            child: Icon(_iconForKind(widget.kind), color: accent),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ]),
+        actions: [
+          if (state.flag('showStatusBar'))
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 7), child: Center(child: Text(widget.kind.extension.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w900, letterSpacing: 1)))),
+          IconButton(
+            tooltip: t('save'),
+            onPressed: exporting ? null : _export,
+            icon: exporting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.file_download_outlined),
+          ),
+        ],
+      ),
+      body: LayoutBuilder(builder: (context, constraints) {
+        if (width >= 1020 && state.flag('previewThumbnails') && !state.flag('lowMemoryMode')) {
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(children: [
+              Expanded(flex: 3, child: editor),
+              const SizedBox(width: 16),
+              Expanded(flex: 2, child: _OfficePreview(kind: widget.kind, title: name, accent: accent, zoom: state.defaultZoom)),
+            ]),
+          );
+        }
+        return Padding(padding: EdgeInsets.all(width < 600 ? 11 : 18), child: editor);
+      }),
+    );
+  }
+}
+
+IconData _iconForKind(DocumentKind kind) => switch (kind) {
+  DocumentKind.pdf => Icons.picture_as_pdf_rounded,
+  DocumentKind.word => Icons.description_rounded,
+  DocumentKind.powerpoint => Icons.slideshow_rounded,
+  DocumentKind.excel => Icons.grid_on_rounded,
+};
+
+class _EditorRuler extends StatelessWidget {
+  const _EditorRuler({required this.color});
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 25,
+    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(8)),
+    child: Row(children: List<Widget>.generate(16, (index) => Expanded(
+      child: Align(alignment: Alignment.bottomCenter, child: Container(width: 1, height: index % 4 == 0 ? 17 : 7, color: index % 4 == 0 ? color : Theme.of(context).colorScheme.outlineVariant)),
+    ))),
+  );
+}
+
+class _EditorGridPainter extends CustomPainter {
+  const _EditorGridPainter(this.color);
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..strokeWidth = 0.6;
+    const step = 32.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _EditorGridPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class _OfficePreview extends StatelessWidget {
+  const _OfficePreview({required this.kind, required this.title, required this.accent, required this.zoom});
+  final DocumentKind kind;
+  final String title;
+  final Color accent;
+  final double zoom;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerLow, borderRadius: BorderRadius.circular(22), border: Border.all(color: theme.colorScheme.outlineVariant)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Live preview', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        Text('Document canvas', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 20),
+        Expanded(
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: Transform.scale(
+                scale: zoom,
+                child: Container(
+                  width: kind == DocumentKind.powerpoint ? 520 : 360,
+                  height: kind == DocumentKind.powerpoint ? 292 : 495,
+                  padding: const EdgeInsets.all(25),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 18, offset: const Offset(0, 7))]),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Container(width: 52, height: 5, color: accent),
+                    const SizedBox(height: 18),
+                    Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: Color(0xFF18243A))),
+                    const SizedBox(height: 18),
+                    ...List<Widget>.generate(8, (index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Container(height: 5, width: index % 3 == 0 ? 300 : (index % 2 == 0 ? 255 : 210), color: const Color(0xFFDDE5F0)),
+                    )),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(L10n.text(Localizations.localeOf(context), 'saveHint'), style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      ]),
+    );
+  }
+}
+
 class _DocTile extends StatelessWidget{const _DocTile(this.title,this.subtitle,this.icon,this.color,this.onTap);final String title,subtitle;final IconData icon;final Color color;final VoidCallback onTap;@override Widget build(BuildContext c)=>Card(clipBehavior:Clip.antiAlias,child:InkWell(onTap:onTap,child:Padding(padding:const EdgeInsets.all(18),child:Row(children:[Container(width:58,height:58,decoration:BoxDecoration(color:color.withAlpha(30),borderRadius:BorderRadius.circular(18)),child:Icon(icon,color:color,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,mainAxisAlignment:MainAxisAlignment.center,children:[Text(title,style:Theme.of(c).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w900)),const SizedBox(height:5),Text(subtitle)])),const Icon(Icons.chevron_right_rounded)]))));}
 class _Metric extends StatelessWidget{const _Metric(this.icon,this.title,this.value);final IconData icon;final String title,value;@override Widget build(BuildContext c)=>Row(mainAxisSize:MainAxisSize.min,children:[Icon(icon),const SizedBox(width:9),Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800)),Text(value)])]);}
 

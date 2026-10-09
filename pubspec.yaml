@@ -1,7 +1,7 @@
 name: parin_office
 description: Professional adaptive all-in-one office suite for Android phones and tablets.
 publish_to: "none"
-version: 0.11.0+110
+version: 0.12.0+120
 environment:
   sdk: ">=3.12.0 <4.0.0"
   flutter: "3.47.0"
@@ -22,6 +22,8 @@ dependencies:
   pdf: ^3.13.1
   syncfusion_flutter_pdf: ^35.1.39
   url_launcher: ^6.3.2
+  printing: ^5.15.1
+  path_provider: ^2.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter
